@@ -4,6 +4,9 @@ interface PersonCardProps {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
+    dateOfDeath?: string;
+    placeOfBirth?: string;
+    placeOfDeath?: string;
     gender: "male" | "female";
 }
 
@@ -18,7 +21,15 @@ const genderColors = {
     },
 };
 
-export const PersonCard: React.FC<PersonCardProps> = ({ firstName, lastName, dateOfBirth, gender }) => {
+export const PersonCard: React.FC<PersonCardProps> = ({
+    firstName,
+    lastName,
+    dateOfBirth,
+    dateOfDeath,
+    placeOfBirth,
+    placeOfDeath,
+    gender,
+}) => {
     const colors = genderColors[gender];
 
     return (
@@ -28,63 +39,96 @@ export const PersonCard: React.FC<PersonCardProps> = ({ firstName, lastName, dat
                 height: "100%",
                 border: `2px solid ${colors.border}`,
                 borderRadius: "8px",
-                padding: "8px",
+                padding: "6px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 background: colors.fill,
                 fontFamily: "Arial, sans-serif",
                 display: "flex",
                 flexDirection: "column",
                 position: "relative",
+                overflow: "hidden",
+                boxSizing: "border-box",
             }}
         >
-            <div style={{ fontWeight: "bold", fontSize: "14px", marginBottom: "6px", color: "#333" }}>
+            <div
+                style={{
+                    fontWeight: "bold",
+                    fontSize: "13px",
+                    marginBottom: "4px",
+                    color: "#333",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                }}
+            >
                 {firstName} {lastName}
             </div>
-            <div style={{ fontSize: "11px", color: "#666", marginBottom: "3px" }}>
-                <strong>First Name:</strong> {firstName}
-            </div>
-            <div style={{ fontSize: "11px", color: "#666", marginBottom: "3px" }}>
-                <strong>Last Name:</strong> {lastName}
-            </div>
-            <div style={{ fontSize: "11px", color: "#666", marginBottom: "6px" }}>
-                <strong>DOB:</strong> {dateOfBirth}
+            <div
+                style={{
+                    flex: "1",
+                    overflowY: "auto",
+                    marginBottom: "4px",
+                    fontSize: "10px",
+                    color: "#666",
+                }}
+            >
+                <div style={{ marginBottom: "2px" }}>
+                    <strong>DOB:</strong> {dateOfBirth}
+                </div>
+                {placeOfBirth && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>Birth:</strong> {placeOfBirth}
+                    </div>
+                )}
+                {dateOfDeath && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>DOD:</strong> {dateOfDeath}
+                    </div>
+                )}
+                {placeOfDeath && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>Death:</strong> {placeOfDeath}
+                    </div>
+                )}
             </div>
             <div
                 style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: "3px",
-                    marginTop: "auto",
+                    gap: "2px",
+                    flexShrink: 0,
                 }}
             >
                 <button
                     className="node-edit-btn"
                     style={{
-                        padding: "4px 8px",
-                        fontSize: "10px",
+                        padding: "3px 6px",
+                        fontSize: "9px",
                         backgroundColor: "#2196F3",
                         color: "white",
                         border: "none",
-                        borderRadius: "4px",
+                        borderRadius: "3px",
                         cursor: "pointer",
                         fontWeight: "500",
+                        whiteSpace: "nowrap",
                     }}
                 >
                     ✏️ Edit
                 </button>
-                <div style={{ display: "flex", gap: "3px" }}>
+                <div style={{ display: "flex", gap: "2px" }}>
                     <button
                         className="node-create-couple-partner-btn"
                         style={{
                             flex: 1,
-                            padding: "4px",
+                            padding: "3px 2px",
                             fontSize: "9px",
                             backgroundColor: "#9C27B0",
                             color: "white",
                             border: "none",
-                            borderRadius: "4px",
+                            borderRadius: "3px",
                             cursor: "pointer",
                             fontWeight: "500",
+                            whiteSpace: "nowrap",
                         }}
                         title="Create couple (as partner)"
                     >
@@ -94,14 +138,15 @@ export const PersonCard: React.FC<PersonCardProps> = ({ firstName, lastName, dat
                         className="node-create-couple-child-btn"
                         style={{
                             flex: 1,
-                            padding: "4px",
+                            padding: "3px 2px",
                             fontSize: "9px",
                             backgroundColor: "#4CAF50",
                             color: "white",
                             border: "none",
-                            borderRadius: "4px",
+                            borderRadius: "3px",
                             cursor: "pointer",
                             fontWeight: "500",
+                            whiteSpace: "nowrap",
                         }}
                         title="Create couple (as child)"
                     >

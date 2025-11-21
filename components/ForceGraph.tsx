@@ -165,7 +165,7 @@ const ForceGraph = () => {
                     .id((d: any) => d.id)
                     .distance(200)
             )
-            .force("charge", d3.forceManyBody().strength(-2000))
+            .force("charge", d3.forceManyBody().strength(-10000))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collision", d3.forceCollide().radius(120))
             .force("x", d3.forceX(width / 2).strength(0.1))
@@ -249,6 +249,9 @@ const ForceGraph = () => {
                             firstName={person.firstName}
                             lastName={person.lastName}
                             dateOfBirth={person.dateOfBirth}
+                            dateOfDeath={person.dateOfDeath}
+                            placeOfBirth={person.placeOfBirth}
+                            placeOfDeath={person.placeOfDeath}
                             gender={person.gender}
                         />
                     );

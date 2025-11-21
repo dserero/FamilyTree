@@ -68,6 +68,9 @@ export const getFamilyTreeData = async () => {
                 firstName: person.firstName || person.name?.split(" ")[0] || "",
                 lastName: person.lastName || person.name?.split(" ").slice(1).join(" ") || "",
                 dateOfBirth: person.dateOfBirth || "",
+                dateOfDeath: person.dateOfDeath || undefined,
+                placeOfBirth: person.placeOfBirth || undefined,
+                placeOfDeath: person.placeOfDeath || undefined,
                 gender: person.gender || "male",
             };
         });
@@ -156,11 +159,26 @@ export async function createFullPersonNode(personData: {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
+    dateOfDeath?: string;
+    placeOfBirth?: string;
+    placeOfDeath?: string;
     gender: "male" | "female";
 }): Promise<{ id: string; name: string }> {
     const session = getSession();
     try {
         const name = `${personData.firstName} ${personData.lastName}`;
+        const properties: any = {
+            name,
+            firstName: personData.firstName,
+            lastName: personData.lastName,
+            dateOfBirth: personData.dateOfBirth,
+            gender: personData.gender,
+        };
+
+        if (personData.dateOfDeath) properties.dateOfDeath = personData.dateOfDeath;
+        if (personData.placeOfBirth) properties.placeOfBirth = personData.placeOfBirth;
+        if (personData.placeOfDeath) properties.placeOfDeath = personData.placeOfDeath;
+
         const result = await session.run(
             `CREATE (p:Person {
                 id: randomUUID(), 
@@ -169,15 +187,12 @@ export async function createFullPersonNode(personData: {
                 lastName: $lastName,
                 dateOfBirth: $dateOfBirth,
                 gender: $gender
+                ${personData.dateOfDeath ? ", dateOfDeath: $dateOfDeath" : ""}
+                ${personData.placeOfBirth ? ", placeOfBirth: $placeOfBirth" : ""}
+                ${personData.placeOfDeath ? ", placeOfDeath: $placeOfDeath" : ""}
              })
              RETURN p`,
-            {
-                name,
-                firstName: personData.firstName,
-                lastName: personData.lastName,
-                dateOfBirth: personData.dateOfBirth,
-                gender: personData.gender,
-            }
+            properties
         );
         const node = result.records[0].get("p");
         return {
@@ -196,12 +211,28 @@ export async function addChildToCouple(
         firstName: string;
         lastName: string;
         dateOfBirth: string;
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
         gender: "male" | "female";
     }
 ): Promise<{ id: string; name: string }> {
     const session = getSession();
     try {
         const name = `${childData.firstName} ${childData.lastName}`;
+        const properties: any = {
+            coupleId,
+            name,
+            firstName: childData.firstName,
+            lastName: childData.lastName,
+            dateOfBirth: childData.dateOfBirth,
+            gender: childData.gender,
+        };
+
+        if (childData.dateOfDeath) properties.dateOfDeath = childData.dateOfDeath;
+        if (childData.placeOfBirth) properties.placeOfBirth = childData.placeOfBirth;
+        if (childData.placeOfDeath) properties.placeOfDeath = childData.placeOfDeath;
+
         const result = await session.run(
             `MATCH (couple:Couple {id: $coupleId})
              CREATE (child:Person {
@@ -211,17 +242,13 @@ export async function addChildToCouple(
                 lastName: $lastName,
                 dateOfBirth: $dateOfBirth,
                 gender: $gender
+                ${childData.dateOfDeath ? ", dateOfDeath: $dateOfDeath" : ""}
+                ${childData.placeOfBirth ? ", placeOfBirth: $placeOfBirth" : ""}
+                ${childData.placeOfDeath ? ", placeOfDeath: $placeOfDeath" : ""}
              })
              CREATE (couple)-[:PARENT_OF]->(child)
              RETURN child`,
-            {
-                coupleId,
-                name,
-                firstName: childData.firstName,
-                lastName: childData.lastName,
-                dateOfBirth: childData.dateOfBirth,
-                gender: childData.gender,
-            }
+            properties
         );
         const node = result.records[0].get("child");
         return {
@@ -240,12 +267,28 @@ export async function addParentToCouple(
         firstName: string;
         lastName: string;
         dateOfBirth: string;
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
         gender: "male" | "female";
     }
 ): Promise<{ id: string; name: string }> {
     const session = getSession();
     try {
         const name = `${parentData.firstName} ${parentData.lastName}`;
+        const properties: any = {
+            coupleId,
+            name,
+            firstName: parentData.firstName,
+            lastName: parentData.lastName,
+            dateOfBirth: parentData.dateOfBirth,
+            gender: parentData.gender,
+        };
+
+        if (parentData.dateOfDeath) properties.dateOfDeath = parentData.dateOfDeath;
+        if (parentData.placeOfBirth) properties.placeOfBirth = parentData.placeOfBirth;
+        if (parentData.placeOfDeath) properties.placeOfDeath = parentData.placeOfDeath;
+
         const result = await session.run(
             `MATCH (couple:Couple {id: $coupleId})
              CREATE (parent:Person {
@@ -255,17 +298,13 @@ export async function addParentToCouple(
                 lastName: $lastName,
                 dateOfBirth: $dateOfBirth,
                 gender: $gender
+                ${parentData.dateOfDeath ? ", dateOfDeath: $dateOfDeath" : ""}
+                ${parentData.placeOfBirth ? ", placeOfBirth: $placeOfBirth" : ""}
+                ${parentData.placeOfDeath ? ", placeOfDeath: $placeOfDeath" : ""}
              })
              CREATE (parent)-[:PARTNER_IN]->(couple)
              RETURN parent`,
-            {
-                coupleId,
-                name,
-                firstName: parentData.firstName,
-                lastName: parentData.lastName,
-                dateOfBirth: parentData.dateOfBirth,
-                gender: parentData.gender,
-            }
+            properties
         );
         const node = result.records[0].get("parent");
         return {
@@ -356,6 +395,9 @@ export async function updatePersonNode(
         firstName?: string;
         lastName?: string;
         dateOfBirth?: string;
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
         gender?: "male" | "female";
     }
 ): Promise<{ id: string; name: string }> {
@@ -380,6 +422,18 @@ export async function updatePersonNode(
         if (updates.dateOfBirth !== undefined) {
             setClauses.push("p.dateOfBirth = $dateOfBirth");
             params.dateOfBirth = updates.dateOfBirth;
+        }
+        if (updates.dateOfDeath !== undefined) {
+            setClauses.push("p.dateOfDeath = $dateOfDeath");
+            params.dateOfDeath = updates.dateOfDeath;
+        }
+        if (updates.placeOfBirth !== undefined) {
+            setClauses.push("p.placeOfBirth = $placeOfBirth");
+            params.placeOfBirth = updates.placeOfBirth;
+        }
+        if (updates.placeOfDeath !== undefined) {
+            setClauses.push("p.placeOfDeath = $placeOfDeath");
+            params.placeOfDeath = updates.placeOfDeath;
         }
         if (updates.gender !== undefined) {
             setClauses.push("p.gender = $gender");

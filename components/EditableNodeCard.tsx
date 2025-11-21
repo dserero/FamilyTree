@@ -24,6 +24,9 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
         firstName: string;
         lastName: string;
         dateOfBirth: string;
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
         gender: "male" | "female";
     }>(
         node.nodeType === "person"
@@ -31,12 +34,18 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                   firstName: node.firstName,
                   lastName: node.lastName,
                   dateOfBirth: node.dateOfBirth,
+                  dateOfDeath: node.dateOfDeath || "",
+                  placeOfBirth: node.placeOfBirth || "",
+                  placeOfDeath: node.placeOfDeath || "",
                   gender: node.gender,
               }
             : {
                   firstName: "",
                   lastName: "",
                   dateOfBirth: "",
+                  dateOfDeath: "",
+                  placeOfBirth: "",
+                  placeOfDeath: "",
                   gender: "male",
               }
     );
@@ -64,6 +73,9 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                     lastName: formData.lastName,
                     name: `${formData.firstName} ${formData.lastName}`,
                     dateOfBirth: formData.dateOfBirth,
+                    dateOfDeath: formData.dateOfDeath || undefined,
+                    placeOfBirth: formData.placeOfBirth || undefined,
+                    placeOfDeath: formData.placeOfDeath || undefined,
                     gender: formData.gender,
                 }),
             });
@@ -80,6 +92,9 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                 lastName: formData.lastName,
                 name: `${formData.firstName} ${formData.lastName}`,
                 dateOfBirth: formData.dateOfBirth,
+                dateOfDeath: formData.dateOfDeath || undefined,
+                placeOfBirth: formData.placeOfBirth || undefined,
+                placeOfDeath: formData.placeOfDeath || undefined,
                 gender: formData.gender,
             };
 
@@ -99,6 +114,9 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                 firstName: node.firstName,
                 lastName: node.lastName,
                 dateOfBirth: node.dateOfBirth,
+                dateOfDeath: node.dateOfDeath || "",
+                placeOfBirth: node.placeOfBirth || "",
+                placeOfDeath: node.placeOfDeath || "",
                 gender: node.gender,
             });
         }
@@ -233,6 +251,39 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Place of Birth (optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.placeOfBirth}
+                                            onChange={(e) => handleInputChange("placeOfBirth", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Date of Death (optional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.dateOfDeath}
+                                            onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Place of Death (optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.placeOfDeath}
+                                            onChange={(e) => handleInputChange("placeOfDeath", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="block text-sm font-medium mb-1">Gender</label>
                                         <select
                                             value={formData.gender}
@@ -356,6 +407,33 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium mb-1">Place of Birth (optional)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.placeOfBirth}
+                                        onChange={(e) => handleInputChange("placeOfBirth", e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Date of Death (optional)</label>
+                                    <input
+                                        type="date"
+                                        value={formData.dateOfDeath}
+                                        onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Place of Death (optional)</label>
+                                    <input
+                                        type="text"
+                                        value={formData.placeOfDeath}
+                                        onChange={(e) => handleInputChange("placeOfDeath", e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium mb-1">Gender</label>
                                     <select
                                         value={formData.gender}
@@ -381,6 +459,24 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     <span className="text-sm font-medium text-gray-500">Date of Birth:</span>
                                     <p className="text-base">{node.dateOfBirth || "Not specified"}</p>
                                 </div>
+                                {node.placeOfBirth && (
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Place of Birth:</span>
+                                        <p className="text-base">{node.placeOfBirth}</p>
+                                    </div>
+                                )}
+                                {node.dateOfDeath && (
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Date of Death:</span>
+                                        <p className="text-base">{node.dateOfDeath}</p>
+                                    </div>
+                                )}
+                                {node.placeOfDeath && (
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Place of Death:</span>
+                                        <p className="text-base">{node.placeOfDeath}</p>
+                                    </div>
+                                )}
                                 <div>
                                     <span className="text-sm font-medium text-gray-500">Gender:</span>
                                     <p className="text-base capitalize">{node.gender}</p>

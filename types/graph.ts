@@ -5,6 +5,9 @@ export interface PersonNode {
     firstName: string;
     lastName: string;
     dateOfBirth: string;
+    dateOfDeath?: string;
+    placeOfBirth?: string;
+    placeOfDeath?: string;
     gender: "male" | "female";
     x?: number;
     y?: number;
