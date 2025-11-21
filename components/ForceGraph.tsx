@@ -120,6 +120,20 @@ const ForceGraph = () => {
         // Clear any existing content
         svg.selectAll("*").remove();
 
+        // Create a container group for zoom/pan
+        const container = svg.append("g").attr("class", "zoom-container");
+
+        // Set up zoom behavior
+        const zoom = d3
+            .zoom<SVGSVGElement, unknown>()
+            .scaleExtent([0.1, 4]) // Allow zooming from 10% to 400%
+            .on("zoom", (event) => {
+                container.attr("transform", event.transform);
+            });
+
+        // Apply zoom behavior to SVG
+        svg.call(zoom);
+
         // Create arrow markers
         createArrowMarkers(svg);
 
@@ -179,7 +193,7 @@ const ForceGraph = () => {
             );
 
         // Create links
-        const link = svg
+        const link = container
             .append("g")
             .selectAll("line")
             .data(graphData.links)
@@ -191,7 +205,7 @@ const ForceGraph = () => {
             .attr("marker-end", (d: any) => `url(#arrowhead-${d.type})`);
 
         // Create nodes as foreign objects to embed HTML
-        const node = svg
+        const node = container
             .append("g")
             .selectAll("foreignObject")
             .data(graphData.nodes)
