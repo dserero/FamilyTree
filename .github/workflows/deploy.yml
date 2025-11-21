@@ -1,0 +1,65 @@
+name: Deploy to VPS
+
+on:
+    push:
+        branches:
+            - main
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Deploy to VPS
+              uses: appleboy/ssh-action@v1.0.0
+              with:
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USERNAME }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  port: ${{ secrets.VPS_PORT || 22 }}
+                  script: |
+                      # Navigate to application directory
+                      cd /opt/familytree || mkdir -p /opt/familytree && cd /opt/familytree
+
+                      # Pull latest changes
+                      if [ -d ".git" ]; then
+                        git pull origin main
+                      else
+                        git clone https://github.com/dserero/FamilyTree.git .
+                      fi
+
+                      # Create .env.local if it doesn't exist
+                      if [ ! -f ".env.local" ]; then
+                        echo "NEO4J_URI=${{ secrets.NEO4J_URI }}" > .env.local
+                        echo "NEO4J_USERNAME=${{ secrets.NEO4J_USERNAME }}" >> .env.local
+                        echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env.local
+                        echo "NEO4J_DATABASE=${{ secrets.NEO4J_DATABASE }}" >> .env.local
+                        echo "AURA_INSTANCEID=${{ secrets.AURA_INSTANCEID }}" >> .env.local
+                        echo "AURA_INSTANCENAME=${{ secrets.AURA_INSTANCENAME }}" >> .env.local
+                      fi
+
+                      # Stop and remove old containers
+                      docker-compose down
+
+                      # Build and start new containers
+                      docker-compose up -d --build
+
+                      # Clean up old images
+                      docker system prune -af --filter "until=24h"
+
+                      echo "Deployment completed successfully!"
+
+            - name: Check deployment status
+              uses: appleboy/ssh-action@v1.0.0
+              with:
+                  host: ${{ secrets.VPS_HOST }}
+                  username: ${{ secrets.VPS_USERNAME }}
+                  key: ${{ secrets.VPS_SSH_KEY }}
+                  port: ${{ secrets.VPS_PORT || 22 }}
+                  script: |
+                      cd /opt/familytree
+                      docker-compose ps
+                      docker-compose logs --tail=50 app
