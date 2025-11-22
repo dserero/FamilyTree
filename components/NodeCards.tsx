@@ -48,7 +48,15 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 boxSizing: "border-box",
             }}
         >
-            <div style={{ textAlign: "center", fontSize: "13px", fontWeight: "bold", color: "#333", marginBottom: "4px" }}>
+            <div
+                style={{
+                    textAlign: "center",
+                    fontSize: "13px",
+                    fontWeight: "bold",
+                    color: "#333",
+                    marginBottom: "4px",
+                }}
+            >
                 {firstName} {lastName}
             </div>
             <div style={{ flex: 1, fontSize: "10px", color: "#666" }}>
