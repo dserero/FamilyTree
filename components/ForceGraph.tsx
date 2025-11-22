@@ -164,11 +164,12 @@ const ForceGraph = () => {
                     .forceLink(graphData.links)
                     .id((d: any) => d.id)
                     .distance(200)
+                    .strength(2)
             )
-            .force("charge", d3.forceManyBody().strength(-10000))
+            .force("charge", d3.forceManyBody().strength(-30000))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collision", d3.forceCollide().radius(120))
-            .force("x", d3.forceX(width / 2).strength(0.1))
+            .force("x", d3.forceX(width / 2).strength(0.5))
             .force(
                 "y",
                 d3
@@ -383,20 +384,37 @@ const ForceGraph = () => {
         if (!data) return;
 
         // Find the node in the data and update its properties in place
-        // This is important to maintain D3's references in the force simulation
+        // This preserves D3's references for the force simulation
         const nodeToUpdate = data.nodes.find((node) => node.id === updatedNode.id);
         if (nodeToUpdate && nodeToUpdate.nodeType === "person") {
             // Update properties in place
-            Object.assign(nodeToUpdate, {
-                firstName: updatedNode.firstName,
-                lastName: updatedNode.lastName,
-                name: updatedNode.name,
-                dateOfBirth: updatedNode.dateOfBirth,
-                gender: updatedNode.gender,
-            });
+            nodeToUpdate.firstName = updatedNode.firstName;
+            nodeToUpdate.lastName = updatedNode.lastName;
+            nodeToUpdate.name = updatedNode.name;
+            nodeToUpdate.dateOfBirth = updatedNode.dateOfBirth;
+            nodeToUpdate.dateOfDeath = updatedNode.dateOfDeath;
+            nodeToUpdate.placeOfBirth = updatedNode.placeOfBirth;
+            nodeToUpdate.placeOfDeath = updatedNode.placeOfDeath;
+            nodeToUpdate.gender = updatedNode.gender;
 
-            // Force a re-render by updating the state
-            setData({ ...data });
+            // Update the visual representation directly in the DOM
+            const svg = d3.select(svgRef.current);
+            svg.selectAll("foreignObject")
+                .filter((d: any) => d.id === updatedNode.id)
+                .select("div")
+                .html(() => {
+                    return renderToStaticMarkup(
+                        <PersonCard
+                            firstName={updatedNode.firstName}
+                            lastName={updatedNode.lastName}
+                            dateOfBirth={updatedNode.dateOfBirth}
+                            dateOfDeath={updatedNode.dateOfDeath}
+                            placeOfBirth={updatedNode.placeOfBirth}
+                            placeOfDeath={updatedNode.placeOfDeath}
+                            gender={updatedNode.gender}
+                        />
+                    );
+                });
         }
 
         // Close the card
