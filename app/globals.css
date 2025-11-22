@@ -14,4 +14,29 @@ body {
     overflow-x: hidden;
     font-family: Arial, sans-serif;
     background-color: #f0f0f0;
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Improve touch scrolling on mobile */
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Improve SVG rendering on mobile */
+svg {
+    /* Prevent double-tap zoom on mobile */
+    touch-action: pan-x pan-y;
+}
+
+/* Ensure foreignObject content renders correctly */
+foreignObject {
+    overflow: visible;
+}
+
+/* Better button tap targets for mobile */
+@media (max-width: 767px) {
+    button {
+        min-height: 32px;
+        min-width: 32px;
+    }
 }

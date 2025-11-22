@@ -31,14 +31,20 @@ export const createArrowMarkers = (svg: d3.Selection<SVGSVGElement, unknown, nul
         .attr("fill", linkColors["parent-child"]);
 };
 
-export const calculateLinkPosition = (sourceNode: any, targetNode: any, isStart: boolean) => {
+export const calculateLinkPosition = (
+    sourceNode: any,
+    targetNode: any,
+    isStart: boolean,
+    isMobile: boolean = false
+) => {
     const dx = targetNode.x - sourceNode.x;
     const dy = targetNode.y - sourceNode.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     const node = isStart ? sourceNode : targetNode;
-    const radiusX = node.nodeType === "couple" ? 40 : 90;
-    const radiusY = node.nodeType === "couple" ? 50 : 85;
+    const dims = getNodeDimensions(node.nodeType, isMobile);
+    const radiusX = dims.halfWidth;
+    const radiusY = dims.halfHeight;
 
     const offsetX = (dx / dist) * radiusX;
     const offsetY = (dy / dist) * radiusY;
@@ -56,9 +62,13 @@ export const calculateLinkPosition = (sourceNode: any, targetNode: any, isStart:
     }
 };
 
-export const getNodeDimensions = (nodeType: "person" | "couple") => {
+export const getNodeDimensions = (nodeType: "person" | "couple", isMobile: boolean = false) => {
     if (nodeType === "couple") {
-        return { width: 80, height: 100, halfWidth: 40, halfHeight: 50 };
+        const width = isMobile ? 60 : 80;
+        const height = isMobile ? 75 : 100;
+        return { width, height, halfWidth: width / 2, halfHeight: height / 2 };
     }
-    return { width: 180, height: 170, halfWidth: 90, halfHeight: 85 };
+    const width = isMobile ? 120 : 180;
+    const height = isMobile ? 140 : 170;
+    return { width, height, halfWidth: width / 2, halfHeight: height / 2 };
 };
