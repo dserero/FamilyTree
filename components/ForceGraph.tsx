@@ -124,10 +124,34 @@ const ForceGraph = () => {
         // Create a container group for zoom/pan
         const container = svg.append("g").attr("class", "zoom-container");
 
-        // Set up zoom behavior
+        // Set up zoom behavior with mobile-friendly filter
         const zoom = d3
             .zoom<SVGSVGElement, unknown>()
             .scaleExtent([0.1, 4]) // Allow zooming from 10% to 400%
+            .filter((event) => {
+                // Allow zoom on wheel, pinch, and background pan
+                // Prevent zoom when dragging nodes (foreignObject elements)
+                const target = event.target as Element;
+                const isNode = target.closest("foreignObject") !== null;
+
+                // Allow all touch events for pinch-zoom and pan
+                if (event.type === "touchstart" || event.type === "touchmove") {
+                    // Allow pinch zoom (2+ fingers)
+                    if (event.touches && event.touches.length >= 2) {
+                        return true;
+                    }
+                    // Allow pan only when not on a node
+                    return !isNode;
+                }
+
+                // Allow wheel zoom
+                if (event.type === "wheel") {
+                    return true;
+                }
+
+                // For mouse events, allow only on background (not on nodes)
+                return !isNode && (event.button === 0 || event.type === "wheel");
+            })
             .on("zoom", (event) => {
                 container.attr("transform", event.transform);
             });
@@ -226,14 +250,28 @@ const ForceGraph = () => {
             .call(
                 d3
                     .drag<any, Node>()
+                    .filter((event) => {
+                        // Only allow dragging with single touch or left mouse button
+                        if (event.type === "touchstart") {
+                            return event.touches.length === 1;
+                        }
+                        return event.button === 0;
+                    })
+                    .subject((event, d) => {
+                        // Get current transform to properly calculate drag coordinates
+                        const t = d3.zoomTransform(svg.node()!);
+                        return { x: t.applyX(d.x!), y: t.applyY(d.y!) };
+                    })
                     .on("start", (event, d) => {
                         if (!event.active) simulation.alphaTarget(0.3).restart();
                         d.fx = d.x;
                         d.fy = d.y;
                     })
                     .on("drag", (event, d) => {
-                        d.fx = event.x;
-                        d.fy = event.y;
+                        // Invert the zoom transform to get simulation coordinates
+                        const t = d3.zoomTransform(svg.node()!);
+                        d.fx = t.invertX(event.x);
+                        d.fy = t.invertY(event.y);
                     })
                     .on("end", (event, d) => {
                         if (!event.active) simulation.alphaTarget(0);
@@ -354,12 +392,12 @@ const ForceGraph = () => {
                 .attr("x2", (d: any) => calculateLinkPosition(d.source, d.target, false).x)
                 .attr("y2", (d: any) => calculateLinkPosition(d.source, d.target, false).y);
 
-            node.attr("x", (d: any) => {
+            // Use transform instead of x/y for better mobile browser support
+            node.attr("transform", (d: any) => {
                 const dims = getNodeDimensions(d.nodeType);
-                return (d.x || 0) - dims.halfWidth;
-            }).attr("y", (d: any) => {
-                const dims = getNodeDimensions(d.nodeType);
-                return (d.y || 0) - dims.halfHeight;
+                const x = (d.x || 0) - dims.halfWidth;
+                const y = (d.y || 0) - dims.halfHeight;
+                return `translate(${x}, ${y})`;
             });
         });
 

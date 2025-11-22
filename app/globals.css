@@ -20,12 +20,19 @@ body {
     text-size-adjust: 100%;
     /* Improve touch scrolling on mobile */
     -webkit-overflow-scrolling: touch;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: none;
 }
 
 /* Improve SVG rendering on mobile */
 svg {
     /* Allow pinch-zoom and pan on mobile */
     touch-action: none;
+    /* Prevent iOS Safari from highlighting elements */
+    -webkit-tap-highlight-color: transparent;
+    /* Improve rendering */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 /* Ensure foreignObject content renders correctly */
