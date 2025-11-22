@@ -48,11 +48,28 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 fontFamily: "Arial, sans-serif",
                 padding: "8px",
                 boxSizing: "border-box",
+                gap: "2px",
             }}
         >
             <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{firstName}</div>
             <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{lastName}</div>
-            <div style={{ textAlign: "center", fontSize: "9px", color: "#666", marginTop: "4px" }}>{dateOfBirth}</div>
+            <div style={{ textAlign: "center", fontSize: "9px", color: "#666" }}>{dateOfBirth}</div>
+            <button
+                className="node-edit-btn"
+                style={{
+                    padding: "2px 4px",
+                    fontSize: "9px",
+                    backgroundColor: "#2196F3",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "3px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    marginTop: "2px",
+                }}
+            >
+                ✏️
+            </button>
         </div>
     );
 };
