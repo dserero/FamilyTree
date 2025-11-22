@@ -35,18 +35,18 @@ export const PersonCard: React.FC<PersonCardProps> = ({
     return (
         <div
             style={{
-                width: "100px",
-                height: "100px",
+                width: "120px",
+                height: "120px",
                 background: colors.fill,
                 border: `3px solid ${colors.border}`,
-                borderRadius: "50%",
+                borderRadius: "8px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 fontFamily: "Arial, sans-serif",
-                padding: "8px",
+                padding: "6px",
                 boxSizing: "border-box",
                 gap: "2px",
             }}
@@ -66,10 +66,47 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                     cursor: "pointer",
                     fontWeight: "500",
                     marginTop: "2px",
+                    width: "100%",
                 }}
             >
-                ✏️
+                ✏️ Edit
             </button>
+            <div style={{ display: "flex", gap: "2px", width: "100%" }}>
+                <button
+                    className="node-create-couple-partner-btn"
+                    style={{
+                        flex: 1,
+                        padding: "2px",
+                        fontSize: "9px",
+                        backgroundColor: "#9C27B0",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "3px",
+                        cursor: "pointer",
+                        fontWeight: "500",
+                    }}
+                    title="Create couple (as partner)"
+                >
+                    💑
+                </button>
+                <button
+                    className="node-create-couple-child-btn"
+                    style={{
+                        flex: 1,
+                        padding: "2px",
+                        fontSize: "9px",
+                        backgroundColor: "#4CAF50",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "3px",
+                        cursor: "pointer",
+                        fontWeight: "500",
+                    }}
+                    title="Create couple (as child)"
+                >
+                    👨‍👩‍👦
+                </button>
+            </div>
         </div>
     );
 };

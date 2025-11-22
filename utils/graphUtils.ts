@@ -62,6 +62,6 @@ export const getNodeDimensions = (nodeType: "person" | "couple") => {
     if (nodeType === "couple") {
         return { width: 80, height: 100, halfWidth: 40, halfHeight: 50 };
     }
-    // Simplified person node - same size as couple for testing
-    return { width: 100, height: 100, halfWidth: 50, halfHeight: 50 };
+    // Step 2/3: Rectangular with buttons (120x120)
+    return { width: 120, height: 120, halfWidth: 60, halfHeight: 60 };
 };
