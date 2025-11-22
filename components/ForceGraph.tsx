@@ -7,6 +7,7 @@ import { createArrowMarkers, calculateLinkPosition, getNodeDimensions } from "@/
 import { PersonCard, CoupleNode as CoupleNodeComponent } from "./NodeCards";
 import { Legend } from "./Legend";
 import { EditableNodeCard } from "./EditableNodeCard";
+import { SearchBar } from "./SearchBar";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // Toggle this to switch between hardcoded data and Neo4j data
@@ -66,6 +67,7 @@ const SAMPLE_DATA = {
 
 const ForceGraph = () => {
     const svgRef = useRef<SVGSVGElement>(null);
+    const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
     const [data, setData] = useState<{ nodes: Node[]; links: Link[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -158,6 +160,9 @@ const ForceGraph = () => {
 
         // Apply zoom behavior to SVG
         svg.call(zoom);
+
+        // Store zoom reference for search functionality
+        zoomRef.current = zoom;
 
         // Set initial zoom to fit content better on mobile
         if (isMobile) {
@@ -467,6 +472,43 @@ const ForceGraph = () => {
         setSelectedNode(null);
     };
 
+    const handleSearchSelect = (nodeId: string) => {
+        if (!data || !svgRef.current || !zoomRef.current) return;
+
+        // Find the node
+        const node = data.nodes.find((n) => n.id === nodeId);
+        if (!node || !node.x || !node.y) return;
+
+        const svg = d3.select(svgRef.current);
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+
+        // Calculate transform to center the node
+        const scale = 1.5; // Zoom level
+        const x = width / 2 - node.x * scale;
+        const y = height / 2 - node.y * scale;
+
+        // Animate to the node
+        svg.transition().duration(750).call(zoomRef.current.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+
+        // Highlight the node temporarily
+        svg.selectAll("foreignObject")
+            .filter((d: any) => d.id === nodeId)
+            .select("div")
+            .transition()
+            .duration(300)
+            .style("box-shadow", "0 0 20px 5px rgba(33, 150, 243, 0.8)")
+            .transition()
+            .duration(300)
+            .style("box-shadow", "0 2px 8px rgba(0,0,0,0.15)")
+            .transition()
+            .duration(300)
+            .style("box-shadow", "0 0 20px 5px rgba(33, 150, 243, 0.8)")
+            .transition()
+            .duration(300)
+            .style("box-shadow", "0 2px 8px rgba(0,0,0,0.15)");
+    };
+
     if (loading) {
         return (
             <div
@@ -506,6 +548,7 @@ const ForceGraph = () => {
         <>
             <svg ref={svgRef} style={{ display: "block" }} />
             <Legend />
+            {data && <SearchBar nodes={data.nodes} onSelectNode={handleSearchSelect} />}
             {selectedNode && (
                 <EditableNodeCard
                     node={selectedNode}
