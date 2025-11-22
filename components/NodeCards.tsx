@@ -35,77 +35,94 @@ export const PersonCard: React.FC<PersonCardProps> = ({
     return (
         <div
             style={{
-                width: "120px",
-                height: "120px",
+                width: "160px",
+                height: "150px",
                 background: colors.fill,
                 border: `3px solid ${colors.border}`,
                 borderRadius: "8px",
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 fontFamily: "Arial, sans-serif",
                 padding: "6px",
                 boxSizing: "border-box",
-                gap: "2px",
             }}
         >
-            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{firstName}</div>
-            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{lastName}</div>
-            <div style={{ textAlign: "center", fontSize: "9px", color: "#666" }}>{dateOfBirth}</div>
-            <button
-                className="node-edit-btn"
-                style={{
-                    padding: "2px 4px",
-                    fontSize: "9px",
-                    backgroundColor: "#2196F3",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "3px",
-                    cursor: "pointer",
-                    fontWeight: "500",
-                    marginTop: "2px",
-                    width: "100%",
-                }}
-            >
-                ✏️ Edit
-            </button>
-            <div style={{ display: "flex", gap: "2px", width: "100%" }}>
+            <div style={{ textAlign: "center", fontSize: "13px", fontWeight: "bold", color: "#333", marginBottom: "4px" }}>
+                {firstName} {lastName}
+            </div>
+            <div style={{ flex: 1, fontSize: "10px", color: "#666" }}>
+                <div style={{ marginBottom: "2px" }}>
+                    <strong>DOB:</strong> {dateOfBirth}
+                </div>
+                {placeOfBirth && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>Birth:</strong> {placeOfBirth}
+                    </div>
+                )}
+                {dateOfDeath && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>DOD:</strong> {dateOfDeath}
+                    </div>
+                )}
+                {placeOfDeath && (
+                    <div style={{ marginBottom: "2px" }}>
+                        <strong>Death:</strong> {placeOfDeath}
+                    </div>
+                )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
                 <button
-                    className="node-create-couple-partner-btn"
+                    className="node-edit-btn"
                     style={{
-                        flex: 1,
-                        padding: "2px",
+                        padding: "3px 6px",
                         fontSize: "9px",
-                        backgroundColor: "#9C27B0",
+                        backgroundColor: "#2196F3",
                         color: "white",
                         border: "none",
                         borderRadius: "3px",
                         cursor: "pointer",
                         fontWeight: "500",
                     }}
-                    title="Create couple (as partner)"
                 >
-                    💑
+                    ✏️ Edit
                 </button>
-                <button
-                    className="node-create-couple-child-btn"
-                    style={{
-                        flex: 1,
-                        padding: "2px",
-                        fontSize: "9px",
-                        backgroundColor: "#4CAF50",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer",
-                        fontWeight: "500",
-                    }}
-                    title="Create couple (as child)"
-                >
-                    👨‍👩‍👦
-                </button>
+                <div style={{ display: "flex", gap: "2px" }}>
+                    <button
+                        className="node-create-couple-partner-btn"
+                        style={{
+                            flex: 1,
+                            padding: "3px 2px",
+                            fontSize: "9px",
+                            backgroundColor: "#9C27B0",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                        }}
+                        title="Create couple (as partner)"
+                    >
+                        💑
+                    </button>
+                    <button
+                        className="node-create-couple-child-btn"
+                        style={{
+                            flex: 1,
+                            padding: "3px 2px",
+                            fontSize: "9px",
+                            backgroundColor: "#4CAF50",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "3px",
+                            cursor: "pointer",
+                            fontWeight: "500",
+                        }}
+                        title="Create couple (as child)"
+                    >
+                        👨‍👩‍👦
+                    </button>
+                </div>
             </div>
         </div>
     );
