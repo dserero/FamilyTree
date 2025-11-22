@@ -283,8 +283,9 @@ const ForceGraph = () => {
         // Add HTML card content to nodes
         node.append("xhtml:div")
             .attr("xmlns", "http://www.w3.org/1999/xhtml")
-            .style("width", "100%")
-            .style("height", "100%")
+            .style("display", "block")
+            .style("width", (d: any) => `${getNodeDimensions(d.nodeType).width}px`)
+            .style("height", (d: any) => `${getNodeDimensions(d.nodeType).height}px`)
             .html((d: any) => {
                 if (d.nodeType === "couple") {
                     return renderToStaticMarkup(<CoupleNodeComponent />);

@@ -35,8 +35,12 @@ export const PersonCard: React.FC<PersonCardProps> = ({
     return (
         <div
             style={{
-                width: "100%",
-                height: "100%",
+                width: "180px",
+                height: "170px",
+                minWidth: "180px",
+                minHeight: "170px",
+                maxWidth: "180px",
+                maxHeight: "170px",
                 border: `2px solid ${colors.border}`,
                 borderRadius: "8px",
                 padding: "6px",
