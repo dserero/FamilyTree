@@ -8,6 +8,7 @@ import { PersonCard, CoupleNode as CoupleNodeComponent } from "./NodeCards";
 import { Legend } from "./Legend";
 import { EditableNodeCard } from "./EditableNodeCard";
 import { SearchBar } from "./SearchBar";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { renderToStaticMarkup } from "react-dom/server";
 
 // Toggle this to switch between hardcoded data and Neo4j data
@@ -73,6 +74,8 @@ const ForceGraph = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [initialAction, setInitialAction] = useState<"parent" | "child" | null>(null);
+    const [showRelationDialog, setShowRelationDialog] = useState(false);
+    const [pendingPersonId, setPendingPersonId] = useState<string | null>(null);
 
     // Fetch data from Neo4j or use hardcoded data
     const fetchData = async () => {
@@ -323,66 +326,19 @@ const ForceGraph = () => {
                 return;
             }
 
-            if (target.classList.contains("node-add-parent-btn")) {
-                setInitialAction("parent");
+            // Handle add person button for couple nodes
+            if (target.classList.contains("node-add-person-btn")) {
+                // Open the editable card which will show the dialog
+                setInitialAction(null);
                 setSelectedNode(d);
                 return;
             }
 
-            if (target.classList.contains("node-add-child-btn")) {
-                setInitialAction("child");
-                setSelectedNode(d);
-                return;
-            }
-
-            // Handle couple creation buttons for person nodes
-            if (target.classList.contains("node-create-couple-partner-btn")) {
-                // Create a couple where this person is a partner
-                try {
-                    const response = await fetch("/api/couple", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            personId: d.id,
-                            role: "partner",
-                        }),
-                    });
-
-                    if (response.ok) {
-                        await fetchData(); // Refresh the graph
-                    } else {
-                        console.error("Failed to create couple");
-                    }
-                } catch (error) {
-                    console.error("Error creating couple:", error);
-                }
-                return;
-            }
-
-            if (target.classList.contains("node-create-couple-child-btn")) {
-                // Create a couple where this person is a child
-                try {
-                    const response = await fetch("/api/couple", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({
-                            personId: d.id,
-                            role: "child",
-                        }),
-                    });
-
-                    if (response.ok) {
-                        await fetchData(); // Refresh the graph
-                    } else {
-                        console.error("Failed to create couple");
-                    }
-                } catch (error) {
-                    console.error("Error creating couple:", error);
-                }
+            // Handle couple creation button for person nodes
+            if (target.classList.contains("node-create-couple-btn")) {
+                // Open dialog to choose relationship type
+                setPendingPersonId(d.id);
+                setShowRelationDialog(true);
                 return;
             }
 
@@ -472,6 +428,33 @@ const ForceGraph = () => {
         setSelectedNode(null);
     };
 
+    const handleCreateCouple = async (role: "partner" | "child") => {
+        if (!pendingPersonId) return;
+
+        try {
+            const response = await fetch("/api/couple", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    personId: pendingPersonId,
+                    role: role,
+                }),
+            });
+
+            if (response.ok) {
+                await fetchData(); // Refresh the graph
+                setShowRelationDialog(false);
+                setPendingPersonId(null);
+            } else {
+                console.error("Failed to create couple");
+            }
+        } catch (error) {
+            console.error("Error creating couple:", error);
+        }
+    };
+
     const handleSearchSelect = (nodeId: string) => {
         if (!data || !svgRef.current || !zoomRef.current) return;
 
@@ -557,6 +540,60 @@ const ForceGraph = () => {
                     onRefresh={fetchData}
                     initialAction={initialAction}
                 />
+            )}
+            {showRelationDialog && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    onClick={() => {
+                        setShowRelationDialog(false);
+                        setPendingPersonId(null);
+                    }}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card className="w-[400px] bg-white">
+                            <CardHeader>
+                                <CardTitle>Create Couple Node</CardTitle>
+                                <CardDescription>Choose the relationship type</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <p className="text-sm text-gray-600">
+                                    How should this person be connected to the new couple node?
+                                </p>
+                                <div className="space-y-2">
+                                    <button
+                                        onClick={() => handleCreateCouple("partner")}
+                                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors text-left"
+                                    >
+                                        <div className="font-semibold">💑 As Partner/Lover</div>
+                                        <div className="text-sm opacity-90">
+                                            Create a couple node where this person is one of the partners
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={() => handleCreateCouple("child")}
+                                        className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-left"
+                                    >
+                                        <div className="font-semibold">👨‍👩‍👦 As Child</div>
+                                        <div className="text-sm opacity-90">
+                                            Create a couple node where this person is a child of that couple
+                                        </div>
+                                    </button>
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <button
+                                    onClick={() => {
+                                        setShowRelationDialog(false);
+                                        setPendingPersonId(null);
+                                    }}
+                                    className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
             )}
         </>
     );

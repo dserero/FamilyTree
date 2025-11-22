@@ -79,10 +79,11 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                     </div>
                 )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+            <div style={{ display: "flex", gap: "2px" }}>
                 <button
                     className="node-edit-btn"
                     style={{
+                        flex: 1,
                         padding: "3px 6px",
                         fontSize: "9px",
                         backgroundColor: "#2196F3",
@@ -95,42 +96,23 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 >
                     ✏️ Edit
                 </button>
-                <div style={{ display: "flex", gap: "2px" }}>
-                    <button
-                        className="node-create-couple-partner-btn"
-                        style={{
-                            flex: 1,
-                            padding: "3px 2px",
-                            fontSize: "9px",
-                            backgroundColor: "#9C27B0",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "3px",
-                            cursor: "pointer",
-                            fontWeight: "500",
-                        }}
-                        title="Create couple (as partner)"
-                    >
-                        💑
-                    </button>
-                    <button
-                        className="node-create-couple-child-btn"
-                        style={{
-                            flex: 1,
-                            padding: "3px 2px",
-                            fontSize: "9px",
-                            backgroundColor: "#4CAF50",
-                            color: "white",
-                            border: "none",
-                            borderRadius: "3px",
-                            cursor: "pointer",
-                            fontWeight: "500",
-                        }}
-                        title="Create couple (as child)"
-                    >
-                        👨‍👩‍👦
-                    </button>
-                </div>
+                <button
+                    className="node-create-couple-btn"
+                    style={{
+                        flex: 0,
+                        padding: "3px 8px",
+                        fontSize: "14px",
+                        backgroundColor: "#4CAF50",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "3px",
+                        cursor: "pointer",
+                        fontWeight: "bold",
+                    }}
+                    title="Create couple"
+                >
+                    +
+                </button>
             </div>
         </div>
     );
@@ -156,42 +138,22 @@ export const CoupleNode: React.FC = () => {
             }}
         >
             <div style={{ textAlign: "center", fontSize: "24px", color: "#F57C00" }}>💑</div>
-            <div style={{ display: "flex", gap: "2px", width: "100%" }}>
-                <button
-                    className="node-add-parent-btn"
-                    style={{
-                        flex: 1,
-                        padding: "2px",
-                        fontSize: "10px",
-                        backgroundColor: "#2196F3",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer",
-                        fontWeight: "500",
-                    }}
-                    title="Add Parent"
-                >
-                    👤
-                </button>
-                <button
-                    className="node-add-child-btn"
-                    style={{
-                        flex: 1,
-                        padding: "2px",
-                        fontSize: "10px",
-                        backgroundColor: "#4CAF50",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "3px",
-                        cursor: "pointer",
-                        fontWeight: "500",
-                    }}
-                    title="Add Child"
-                >
-                    👶
-                </button>
-            </div>
+            <button
+                className="node-add-person-btn"
+                style={{
+                    padding: "4px 12px",
+                    fontSize: "16px",
+                    backgroundColor: "#4CAF50",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "3px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                }}
+                title="Add Person"
+            >
+                +
+            </button>
         </div>
     );
 };

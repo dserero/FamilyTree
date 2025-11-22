@@ -18,6 +18,8 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showRelationDialog, setShowRelationDialog] = useState(false);
+    const [showCoupleRelationDialog, setShowCoupleRelationDialog] = useState(false);
 
     // State for editable fields (only for PersonNode)
     const [formData, setFormData] = useState<{
@@ -159,6 +161,45 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
         } catch (err) {
             console.error("Error creating person:", err);
             setError(err instanceof Error ? err.message : "Failed to create person");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCreateCouple = async (role: "partner" | "child") => {
+        if (node.nodeType !== "person") return;
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const response = await fetch("/api/couple", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    personId: node.id,
+                    role: role,
+                }),
+            });
+
+            if (response.ok) {
+                // Refresh the graph data
+                if (onRefresh) {
+                    onRefresh();
+                }
+
+                // Close the dialog and card
+                setShowRelationDialog(false);
+                onClose();
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to create couple");
+            }
+        } catch (err) {
+            console.error("Error creating couple:", err);
+            setError(err instanceof Error ? err.message : "Failed to create couple");
         } finally {
             setIsSaving(false);
         }
@@ -365,170 +406,228 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
             <div onClick={(e) => e.stopPropagation()}>
-                <Card className="w-[450px] bg-white">
-                    <CardHeader>
-                        <CardTitle>{isEditing ? "Edit Person" : `${node.firstName} ${node.lastName}`}</CardTitle>
-                        <CardDescription>ID: {node.id}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {error && (
-                            <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
-                                {error}
+                {showRelationDialog ? (
+                    <Card className="w-[400px] bg-white">
+                        <CardHeader>
+                            <CardTitle>Create Couple Node</CardTitle>
+                            <CardDescription>Choose the relationship type</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <p className="text-sm text-gray-600">
+                                How should this person be connected to the new couple node?
+                            </p>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => handleCreateCouple("partner")}
+                                    disabled={isSaving}
+                                    className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-left"
+                                >
+                                    <div className="font-semibold">💑 As Partner/Lover</div>
+                                    <div className="text-sm opacity-90">
+                                        Create a couple node where this person is one of the partners
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => handleCreateCouple("child")}
+                                    disabled={isSaving}
+                                    className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-left"
+                                >
+                                    <div className="font-semibold">👨‍👩‍👦 As Child</div>
+                                    <div className="text-sm opacity-90">
+                                        Create a couple node where this person is a child of that couple
+                                    </div>
+                                </button>
                             </div>
-                        )}
+                        </CardContent>
+                        <CardFooter>
+                            <button
+                                onClick={() => setShowRelationDialog(false)}
+                                disabled={isSaving}
+                                className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
+                            >
+                                {isSaving ? "Creating..." : "Cancel"}
+                            </button>
+                        </CardFooter>
+                    </Card>
+                ) : (
+                    <Card className="w-[450px] bg-white">
+                        <CardHeader>
+                            <CardTitle>{isEditing ? "Edit Person" : `${node.firstName} ${node.lastName}`}</CardTitle>
+                            <CardDescription>ID: {node.id}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {error && (
+                                <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
+                                    {error}
+                                </div>
+                            )}
 
-                        {isEditing ? (
-                            <>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">First Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.firstName}
-                                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Last Name</label>
-                                    <input
-                                        type="text"
-                                        value={formData.lastName}
-                                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Date of Birth</label>
-                                    <input
-                                        type="date"
-                                        value={formData.dateOfBirth}
-                                        onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Place of Birth (optional)</label>
-                                    <input
-                                        type="text"
-                                        value={formData.placeOfBirth}
-                                        onChange={(e) => handleInputChange("placeOfBirth", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Date of Death (optional)</label>
-                                    <input
-                                        type="date"
-                                        value={formData.dateOfDeath}
-                                        onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Place of Death (optional)</label>
-                                    <input
-                                        type="text"
-                                        value={formData.placeOfDeath}
-                                        onChange={(e) => handleInputChange("placeOfDeath", e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Gender</label>
-                                    <select
-                                        value={formData.gender}
-                                        onChange={(e) =>
-                                            handleInputChange("gender", e.target.value as "male" | "female")
-                                        }
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            {isEditing ? (
+                                <>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">First Name</label>
+                                        <input
+                                            type="text"
+                                            value={formData.firstName}
+                                            onChange={(e) => handleInputChange("firstName", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Last Name</label>
+                                        <input
+                                            type="text"
+                                            value={formData.lastName}
+                                            onChange={(e) => handleInputChange("lastName", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Date of Birth</label>
+                                        <input
+                                            type="date"
+                                            value={formData.dateOfBirth}
+                                            onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Place of Birth (optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.placeOfBirth}
+                                            onChange={(e) => handleInputChange("placeOfBirth", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Date of Death (optional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.dateOfDeath}
+                                            onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">
+                                            Place of Death (optional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.placeOfDeath}
+                                            onChange={(e) => handleInputChange("placeOfDeath", e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Gender</label>
+                                        <select
+                                            value={formData.gender}
+                                            onChange={(e) =>
+                                                handleInputChange("gender", e.target.value as "male" | "female")
+                                            }
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        >
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Name:</span>
+                                        <p className="text-base">
+                                            {node.firstName} {node.lastName}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Date of Birth:</span>
+                                        <p className="text-base">{node.dateOfBirth || "Not specified"}</p>
+                                    </div>
+                                    {node.placeOfBirth && (
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Place of Birth:</span>
+                                            <p className="text-base">{node.placeOfBirth}</p>
+                                        </div>
+                                    )}
+                                    {node.dateOfDeath && (
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Date of Death:</span>
+                                            <p className="text-base">{node.dateOfDeath}</p>
+                                        </div>
+                                    )}
+                                    {node.placeOfDeath && (
+                                        <div>
+                                            <span className="text-sm font-medium text-gray-500">Place of Death:</span>
+                                            <p className="text-base">{node.placeOfDeath}</p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <span className="text-sm font-medium text-gray-500">Gender:</span>
+                                        <p className="text-base capitalize">{node.gender}</p>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                        <CardFooter className="flex gap-2">
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={handleCancel}
+                                        disabled={isSaving}
+                                        className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
                                     >
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                    </select>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Name:</span>
-                                    <p className="text-base">
-                                        {node.firstName} {node.lastName}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Date of Birth:</span>
-                                    <p className="text-base">{node.dateOfBirth || "Not specified"}</p>
-                                </div>
-                                {node.placeOfBirth && (
-                                    <div>
-                                        <span className="text-sm font-medium text-gray-500">Place of Birth:</span>
-                                        <p className="text-base">{node.placeOfBirth}</p>
-                                    </div>
-                                )}
-                                {node.dateOfDeath && (
-                                    <div>
-                                        <span className="text-sm font-medium text-gray-500">Date of Death:</span>
-                                        <p className="text-base">{node.dateOfDeath}</p>
-                                    </div>
-                                )}
-                                {node.placeOfDeath && (
-                                    <div>
-                                        <span className="text-sm font-medium text-gray-500">Place of Death:</span>
-                                        <p className="text-base">{node.placeOfDeath}</p>
-                                    </div>
-                                )}
-                                <div>
-                                    <span className="text-sm font-medium text-gray-500">Gender:</span>
-                                    <p className="text-base capitalize">{node.gender}</p>
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                    <CardFooter className="flex gap-2">
-                        {isEditing ? (
-                            <>
-                                <button
-                                    onClick={handleCancel}
-                                    disabled={isSaving}
-                                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={isSaving}
-                                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                >
-                                    {isSaving ? "Saving..." : "Save"}
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    disabled={isDeleting}
-                                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    disabled={isDeleting}
-                                    className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                >
-                                    {isDeleting ? "Deleting..." : "Delete"}
-                                </button>
-                                <button
-                                    onClick={onClose}
-                                    disabled={isDeleting}
-                                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
-                                >
-                                    Close
-                                </button>
-                            </>
-                        )}
-                    </CardFooter>
-                </Card>
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={isSaving}
+                                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                                    >
+                                        {isSaving ? "Saving..." : "Save"}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        disabled={isDeleting}
+                                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => setShowRelationDialog(true)}
+                                        disabled={isDeleting}
+                                        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-md transition-colors font-bold text-lg"
+                                    >
+                                        +
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        disabled={isDeleting}
+                                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
+                                    >
+                                        {isDeleting ? "Deleting..." : "Delete"}
+                                    </button>
+                                    <button
+                                        onClick={onClose}
+                                        disabled={isDeleting}
+                                        className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                </>
+                            )}
+                        </CardFooter>
+                    </Card>
+                )}
             </div>
         </div>
     );
