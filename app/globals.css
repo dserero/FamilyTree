@@ -24,8 +24,8 @@ body {
 
 /* Improve SVG rendering on mobile */
 svg {
-    /* Prevent double-tap zoom on mobile */
-    touch-action: pan-x pan-y;
+    /* Allow pinch-zoom and pan on mobile */
+    touch-action: none;
 }
 
 /* Ensure foreignObject content renders correctly */

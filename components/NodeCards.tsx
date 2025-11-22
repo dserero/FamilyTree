@@ -32,17 +32,6 @@ export const PersonCard: React.FC<PersonCardProps> = ({
 }) => {
     const colors = genderColors[gender];
 
-    // Detect mobile for responsive sizing
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-
-    // Scale sizes for mobile
-    const scale = isMobile ? 0.75 : 1;
-    const titleFontSize = Math.round(13 * scale);
-    const detailFontSize = Math.round(10 * scale);
-    const buttonFontSize = Math.round(9 * scale);
-    const padding = Math.round(6 * scale);
-    const gap = Math.round(2 * scale);
-
     return (
         <div
             style={{
@@ -50,7 +39,7 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 height: "100%",
                 border: `2px solid ${colors.border}`,
                 borderRadius: "8px",
-                padding: `${padding}px`,
+                padding: "6px",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
                 background: colors.fill,
                 fontFamily: "Arial, sans-serif",
@@ -64,8 +53,8 @@ export const PersonCard: React.FC<PersonCardProps> = ({
             <div
                 style={{
                     fontWeight: "bold",
-                    fontSize: `${titleFontSize}px`,
-                    marginBottom: `${gap * 2}px`,
+                    fontSize: "13px",
+                    marginBottom: "4px",
                     color: "#333",
                     whiteSpace: "nowrap",
                     overflow: "hidden",
@@ -78,26 +67,26 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 style={{
                     flex: "1",
                     overflowY: "auto",
-                    marginBottom: `${gap * 2}px`,
-                    fontSize: `${detailFontSize}px`,
+                    marginBottom: "4px",
+                    fontSize: "10px",
                     color: "#666",
                 }}
             >
-                <div style={{ marginBottom: `${gap}px` }}>
+                <div style={{ marginBottom: "2px" }}>
                     <strong>DOB:</strong> {dateOfBirth}
                 </div>
                 {placeOfBirth && (
-                    <div style={{ marginBottom: `${gap}px` }}>
+                    <div style={{ marginBottom: "2px" }}>
                         <strong>Birth:</strong> {placeOfBirth}
                     </div>
                 )}
                 {dateOfDeath && (
-                    <div style={{ marginBottom: `${gap}px` }}>
+                    <div style={{ marginBottom: "2px" }}>
                         <strong>DOD:</strong> {dateOfDeath}
                     </div>
                 )}
                 {placeOfDeath && (
-                    <div style={{ marginBottom: `${gap}px` }}>
+                    <div style={{ marginBottom: "2px" }}>
                         <strong>Death:</strong> {placeOfDeath}
                     </div>
                 )}
@@ -106,15 +95,15 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 style={{
                     display: "flex",
                     flexDirection: "column",
-                    gap: `${gap}px`,
+                    gap: "2px",
                     flexShrink: 0,
                 }}
             >
                 <button
                     className="node-edit-btn"
                     style={{
-                        padding: `${gap}px ${padding}px`,
-                        fontSize: `${buttonFontSize}px`,
+                        padding: "3px 6px",
+                        fontSize: "9px",
                         backgroundColor: "#2196F3",
                         color: "white",
                         border: "none",
@@ -126,13 +115,13 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 >
                     ✏️ Edit
                 </button>
-                <div style={{ display: "flex", gap: `${gap}px` }}>
+                <div style={{ display: "flex", gap: "2px" }}>
                     <button
                         className="node-create-couple-partner-btn"
                         style={{
                             flex: 1,
-                            padding: `${gap}px`,
-                            fontSize: `${buttonFontSize}px`,
+                            padding: "3px 2px",
+                            fontSize: "9px",
                             backgroundColor: "#9C27B0",
                             color: "white",
                             border: "none",
@@ -149,8 +138,8 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                         className="node-create-couple-child-btn"
                         style={{
                             flex: 1,
-                            padding: `${gap}px`,
-                            fontSize: `${buttonFontSize}px`,
+                            padding: "3px 2px",
+                            fontSize: "9px",
                             backgroundColor: "#4CAF50",
                             color: "white",
                             border: "none",
@@ -170,18 +159,11 @@ export const PersonCard: React.FC<PersonCardProps> = ({
 };
 
 export const CoupleNode: React.FC = () => {
-    // Detect mobile for responsive sizing
-    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-    const size = isMobile ? 60 : 80;
-    const iconSize = isMobile ? 18 : 24;
-    const fontSize = isMobile ? 8 : 10;
-    const padding = isMobile ? 6 : 8;
-
     return (
         <div
             style={{
-                width: `${size}px`,
-                height: `${size}px`,
+                width: "80px",
+                height: "80px",
                 background: "#FFF3E0",
                 border: "3px solid #FF9800",
                 borderRadius: "50%",
@@ -191,18 +173,18 @@ export const CoupleNode: React.FC = () => {
                 justifyContent: "center",
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 fontFamily: "Arial, sans-serif",
-                padding: `${padding}px`,
+                padding: "8px",
                 gap: "4px",
             }}
         >
-            <div style={{ textAlign: "center", fontSize: `${iconSize}px`, color: "#F57C00" }}>💑</div>
+            <div style={{ textAlign: "center", fontSize: "24px", color: "#F57C00" }}>💑</div>
             <div style={{ display: "flex", gap: "2px", width: "100%" }}>
                 <button
                     className="node-add-parent-btn"
                     style={{
                         flex: 1,
                         padding: "2px",
-                        fontSize: `${fontSize}px`,
+                        fontSize: "10px",
                         backgroundColor: "#2196F3",
                         color: "white",
                         border: "none",
@@ -219,7 +201,7 @@ export const CoupleNode: React.FC = () => {
                     style={{
                         flex: 1,
                         padding: "2px",
-                        fontSize: `${fontSize}px`,
+                        fontSize: "10px",
                         backgroundColor: "#4CAF50",
                         color: "white",
                         border: "none",

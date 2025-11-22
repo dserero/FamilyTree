@@ -135,6 +135,11 @@ const ForceGraph = () => {
         // Apply zoom behavior to SVG
         svg.call(zoom);
 
+        // Set initial zoom to fit content better on mobile
+        if (isMobile) {
+            svg.call(zoom.transform, d3.zoomIdentity.translate(0, 0).scale(0.7));
+        }
+
         // Create arrow markers
         createArrowMarkers(svg);
 
@@ -156,12 +161,8 @@ const ForceGraph = () => {
 
         console.log("Birth year range:", { minYear, maxYear, hasValidDates, validBirthYears });
 
-        // Scale force simulation parameters based on screen size
-        const linkDistance = isMobile ? 120 : 200;
-        const chargeStrength = isMobile ? -8000 : -30000;
-        const collisionRadius = isMobile ? 70 : 120;
-
-        // Create force simulation
+        // Create force simulation with consistent parameters
+        // D3 zoom will handle visual scaling for different screen sizes
         const simulation = d3
             .forceSimulation(graphData.nodes)
             .force(
@@ -169,12 +170,12 @@ const ForceGraph = () => {
                 d3
                     .forceLink(graphData.links)
                     .id((d: any) => d.id)
-                    .distance(linkDistance)
+                    .distance(200)
                     .strength(3)
             )
-            .force("charge", d3.forceManyBody().strength(chargeStrength))
+            .force("charge", d3.forceManyBody().strength(-30000))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide().radius(collisionRadius))
+            .force("collision", d3.forceCollide().radius(120))
             .force("x", d3.forceX(width / 2).strength(0.1))
             .force(
                 "y",
@@ -217,8 +218,8 @@ const ForceGraph = () => {
             .selectAll("foreignObject")
             .data(graphData.nodes)
             .join("foreignObject")
-            .attr("width", (d: any) => getNodeDimensions(d.nodeType, isMobile).width)
-            .attr("height", (d: any) => getNodeDimensions(d.nodeType, isMobile).height)
+            .attr("width", (d: any) => getNodeDimensions(d.nodeType).width)
+            .attr("height", (d: any) => getNodeDimensions(d.nodeType).height)
             .attr("class", "node")
             .style("cursor", "pointer")
             .style("overflow", "visible")
@@ -348,16 +349,16 @@ const ForceGraph = () => {
 
         // Update positions on each tick
         simulation.on("tick", () => {
-            link.attr("x1", (d: any) => calculateLinkPosition(d.source, d.target, true, isMobile).x)
-                .attr("y1", (d: any) => calculateLinkPosition(d.source, d.target, true, isMobile).y)
-                .attr("x2", (d: any) => calculateLinkPosition(d.source, d.target, false, isMobile).x)
-                .attr("y2", (d: any) => calculateLinkPosition(d.source, d.target, false, isMobile).y);
+            link.attr("x1", (d: any) => calculateLinkPosition(d.source, d.target, true).x)
+                .attr("y1", (d: any) => calculateLinkPosition(d.source, d.target, true).y)
+                .attr("x2", (d: any) => calculateLinkPosition(d.source, d.target, false).x)
+                .attr("y2", (d: any) => calculateLinkPosition(d.source, d.target, false).y);
 
             node.attr("x", (d: any) => {
-                const dims = getNodeDimensions(d.nodeType, isMobile);
+                const dims = getNodeDimensions(d.nodeType);
                 return (d.x || 0) - dims.halfWidth;
             }).attr("y", (d: any) => {
-                const dims = getNodeDimensions(d.nodeType, isMobile);
+                const dims = getNodeDimensions(d.nodeType);
                 return (d.y || 0) - dims.halfHeight;
             });
         });
