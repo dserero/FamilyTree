@@ -50,15 +50,9 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 boxSizing: "border-box",
             }}
         >
-            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>
-                {firstName}
-            </div>
-            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>
-                {lastName}
-            </div>
-            <div style={{ textAlign: "center", fontSize: "9px", color: "#666", marginTop: "4px" }}>
-                {dateOfBirth}
-            </div>
+            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{firstName}</div>
+            <div style={{ textAlign: "center", fontSize: "12px", fontWeight: "bold", color: "#333" }}>{lastName}</div>
+            <div style={{ textAlign: "center", fontSize: "9px", color: "#666", marginTop: "4px" }}>{dateOfBirth}</div>
         </div>
     );
 };
