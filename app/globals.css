@@ -48,8 +48,77 @@ foreignObject {
     }
 }
 
+/* Person card hover effects */
+.person-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Couple node hover effects */
+.couple-node-hover:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(255, 152, 0, 0.4) !important;
+}
+
+/* Photo navigation animations */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.photo-viewer-image {
+    animation: fadeInScale 0.2s ease-out;
+}
+
+/* Mobile swipe hint */
+@media (max-width: 768px) {
+    .photo-viewer-hint {
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        pointer-events: none;
+        animation: fadeInOut 3s ease-in-out;
+    }
+}
+
+@keyframes fadeInOut {
+    0%,
+    100% {
+        opacity: 0;
+    }
+    10%,
+    90% {
+        opacity: 1;
+    }
+}
+
+/* Photo navigation buttons - always visible on mobile, fade in on desktop hover */
+@media (min-width: 769px) {
+    .relative:hover .opacity-0 {
+        opacity: 1 !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .opacity-0 {
+        opacity: 0.7 !important;
+    }
+}
+
 @layer base {
-  :root {
+    :root {
         --background: 0 0% 100%;
         --foreground: 0 0% 3.9%;
         --card: 0 0% 100%;
@@ -76,7 +145,7 @@ foreignObject {
         --chart-5: 27 87% 67%;
         --radius: 0.5rem;
     }
-  .dark {
+    .dark {
         --background: 0 0% 3.9%;
         --foreground: 0 0% 98%;
         --card: 0 0% 3.9%;
@@ -105,10 +174,10 @@ foreignObject {
 }
 
 @layer base {
-  * {
-    @apply border-border;
+    * {
+        @apply border-border;
     }
-  body {
-    @apply bg-background text-foreground;
+    body {
+        @apply bg-background text-foreground;
     }
 }

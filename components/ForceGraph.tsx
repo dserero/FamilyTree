@@ -72,6 +72,10 @@ const getPersonDetailRows = (person: Partial<PersonNode>) => {
         { label: "Place of Birth", value: person.placeOfBirth || "Unknown" },
     ];
 
+    if (person.profession) {
+        rows.push({ label: "Profession", value: person.profession });
+    }
+
     if (person.dateOfDeath) {
         rows.push({ label: "Date of Death", value: person.dateOfDeath });
         rows.push({
@@ -512,6 +516,52 @@ const ForceGraph = () => {
                 });
         });
 
+        // Photo badge (top-right corner)
+        personNodes.each(function (d: any) {
+            if (d.photoCount && d.photoCount > 0) {
+                const nodeGroup = d3.select(this);
+                const badgeSize = 32;
+                const badgeX = nodeWidth - 16;
+                const badgeY = 16;
+
+                // Badge background circle
+                nodeGroup
+                    .append("circle")
+                    .attr("cx", badgeX)
+                    .attr("cy", badgeY)
+                    .attr("r", badgeSize / 2)
+                    .attr("fill", "#FF5722")
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 2.5)
+                    .style("filter", "drop-shadow(0px 2px 4px rgba(0,0,0,0.25))");
+
+                // Camera emoji
+                nodeGroup
+                    .append("text")
+                    .attr("x", badgeX)
+                    .attr("y", badgeY - 4)
+                    .attr("text-anchor", "middle")
+                    .attr("dominant-baseline", "middle")
+                    .style("font-size", "14px")
+                    .style("pointer-events", "none")
+                    .text("📷");
+
+                // Photo count
+                nodeGroup
+                    .append("text")
+                    .attr("x", badgeX)
+                    .attr("y", badgeY + 7)
+                    .attr("text-anchor", "middle")
+                    .attr("dominant-baseline", "middle")
+                    .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                    .style("font-size", "10px")
+                    .style("font-weight", "700")
+                    .style("fill", "#fff")
+                    .style("pointer-events", "none")
+                    .text(d.photoCount);
+            }
+        });
+
         // Couple nodes
         const coupleNodes = node.filter((d: any) => d.nodeType === "couple");
 
@@ -649,26 +699,104 @@ const ForceGraph = () => {
     };
 
     const handleUpdateNode = (updatedNode: PersonNode) => {
-        if (!data) return;
+        if (!data || !svgRef.current) return;
 
+        // Update the node in the data array (without triggering re-render)
         const nodeToUpdate = data.nodes.find((node) => node.id === updatedNode.id);
         if (nodeToUpdate && nodeToUpdate.nodeType === "person") {
             Object.assign(nodeToUpdate, updatedNode);
-
-            const svg = d3.select(svgRef.current);
-            const personNode = svg.select(`#node-${updatedNode.id}`);
-
-            personNode.select("text").text(updatedNode.name);
-
-            personNode
-                .selectAll("text")
-                .filter((d, i) => i === 1)
-                .text(() => {
-                    const birth = updatedNode.dateOfBirth ? `b. ${updatedNode.dateOfBirth}` : "";
-                    const death = updatedNode.dateOfDeath ? `d. ${updatedNode.dateOfDeath}` : "";
-                    return [birth, death].filter(Boolean).join(" - ");
-                });
         }
+
+        // Update the visual representation of this specific node
+        const svg = d3.select(svgRef.current);
+        const nodeGroup = svg.select(`#node-${updatedNode.id}`);
+        
+        if (nodeGroup.empty()) {
+            setSelectedNode(null);
+            return;
+        }
+
+        // Recalculate node height based on new data
+        const detailRows = getPersonDetailRows(updatedNode);
+        const headerHeight = 50;
+        const basePadding = 16;
+        const rowHeight = 38;
+        const buttonSectionHeight = 44;
+        const newHeight = headerHeight + basePadding + detailRows.length * rowHeight + buttonSectionHeight;
+        const nodeWidth = 220;
+
+        // Update stored height on the data object
+        if (nodeToUpdate) {
+            (nodeToUpdate as any).nodeHeight = newHeight;
+        }
+
+        // Update the background rectangles
+        nodeGroup.select("rect:nth-of-type(1)")
+            .attr("height", newHeight);
+
+        // Update the name (first text element in header)
+        nodeGroup.select("text")
+            .text(updatedNode.name);
+
+        // Remove only the detail text elements (not button text or name)
+        // Detail text has y positions between headerHeight + basePadding and the button area
+        const detailStartY = headerHeight + basePadding;
+        const detailEndY = newHeight - buttonSectionHeight;
+        
+        nodeGroup.selectAll("text")
+            .filter(function(this: any) {
+                const y = parseFloat(d3.select(this).attr("y"));
+                // Remove text that's in the detail area but not button text
+                return y >= detailStartY && y < detailEndY && 
+                       !d3.select(this).classed("button-text");
+            })
+            .remove();
+
+        // Re-add detail rows
+        let yOffset = headerHeight + basePadding;
+        detailRows.forEach((row, index) => {
+            const currentY = yOffset + index * rowHeight;
+
+            // Label
+            nodeGroup
+                .append("text")
+                .attr("x", basePadding)
+                .attr("y", currentY + 12)
+                .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                .style("font-size", "9px")
+                .style("font-weight", "600")
+                .style("fill", "#757575")
+                .style("text-transform", "uppercase")
+                .style("letter-spacing", "0.5px")
+                .text(row.label);
+
+            // Value
+            nodeGroup
+                .append("text")
+                .attr("x", basePadding)
+                .attr("y", currentY + 28)
+                .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                .style("font-size", "12px")
+                .style("font-weight", "500")
+                .style("fill", "#212121")
+                .text(row.value);
+        });
+
+        // Update button positions
+        const buttonY = newHeight - 36;
+        const buttonHeight = 28;
+        
+        // Update edit button
+        nodeGroup.select(".edit-button rect")
+            .attr("y", buttonY);
+        nodeGroup.select(".edit-button text")
+            .attr("y", buttonY + buttonHeight / 2 + 5);
+        
+        // Update add button
+        nodeGroup.select(".add-button rect")
+            .attr("y", buttonY);
+        nodeGroup.select(".add-button text")
+            .attr("y", buttonY + buttonHeight / 2 + 5);
 
         setSelectedNode(null);
     };
