@@ -31,15 +31,13 @@ jobs:
                         git clone https://github.com/dserero/FamilyTree.git .
                       fi
 
-                      # Create .env.local if it doesn't exist
-                      if [ ! -f ".env.local" ]; then
-                        echo "NEO4J_URI=${{ secrets.NEO4J_URI }}" > .env.local
-                        echo "NEO4J_USERNAME=${{ secrets.NEO4J_USERNAME }}" >> .env.local
-                        echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env.local
-                        echo "NEO4J_DATABASE=${{ secrets.NEO4J_DATABASE }}" >> .env.local
-                        echo "AURA_INSTANCEID=${{ secrets.AURA_INSTANCEID }}" >> .env.local
-                        echo "AURA_INSTANCENAME=${{ secrets.AURA_INSTANCENAME }}" >> .env.local
-                      fi
+                      # Create/Update .env.local with latest secrets
+                      echo "NEO4J_URI=${{ secrets.NEO4J_URI }}" > .env.local
+                      echo "NEO4J_USERNAME=${{ secrets.NEO4J_USERNAME }}" >> .env.local
+                      echo "NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }}" >> .env.local
+                      echo "NEO4J_DATABASE=${{ secrets.NEO4J_DATABASE }}" >> .env.local
+                      echo "AURA_INSTANCEID=${{ secrets.AURA_INSTANCEID }}" >> .env.local
+                      echo "AURA_INSTANCENAME=${{ secrets.AURA_INSTANCENAME }}" >> .env.local
 
                       # Stop and remove old containers
                       docker-compose down
