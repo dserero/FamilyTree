@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { PersonNode, CoupleNode } from "@/types/graph";
+import { useState, useEffect } from "react";
+import { PersonNode, CoupleNode, Node } from "@/types/graph";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface EditableNodeCardProps {
@@ -20,6 +20,10 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
     const [error, setError] = useState<string | null>(null);
     const [showRelationDialog, setShowRelationDialog] = useState(false);
     const [showCoupleRelationDialog, setShowCoupleRelationDialog] = useState(false);
+    const [showLinkDialog, setShowLinkDialog] = useState<"partner" | "child" | null>(null);
+    const [allPersons, setAllPersons] = useState<PersonNode[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [filteredPersons, setFilteredPersons] = useState<PersonNode[]>([]);
 
     // State for editable fields (only for PersonNode)
     const [formData, setFormData] = useState<{
@@ -52,9 +56,91 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
               }
     );
 
+    // Fetch all persons when showing link dialog
+    useEffect(() => {
+        if (showLinkDialog && node.nodeType === "couple") {
+            fetchAllPersons();
+        }
+    }, [showLinkDialog, node.nodeType]);
+
+    // Filter persons based on search term
+    useEffect(() => {
+        if (searchTerm.trim() === "") {
+            setFilteredPersons(allPersons);
+        } else {
+            const searchLower = searchTerm.toLowerCase();
+            const filtered = allPersons.filter((person) => {
+                const fullName = `${person.firstName} ${person.lastName}`.toLowerCase();
+                return (
+                    fullName.includes(searchLower) ||
+                    person.firstName.toLowerCase().includes(searchLower) ||
+                    person.lastName.toLowerCase().includes(searchLower)
+                );
+            });
+            setFilteredPersons(filtered);
+        }
+    }, [searchTerm, allPersons]);
+
+    const fetchAllPersons = async () => {
+        try {
+            const response = await fetch("/api/family-tree");
+            if (!response.ok) {
+                throw new Error("Failed to fetch persons");
+            }
+            const data = await response.json();
+            const persons = data.nodes.filter((n: Node): n is PersonNode => n.nodeType === "person");
+            setAllPersons(persons);
+            setFilteredPersons(persons);
+        } catch (err) {
+            console.error("Error fetching persons:", err);
+            setError(err instanceof Error ? err.message : "Failed to fetch persons");
+        }
+    };
+
     const handleInputChange = (field: keyof typeof formData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         setError(null);
+    };
+
+    const handleLinkExistingPerson = async (personId: string) => {
+        if (node.nodeType !== "couple" || !showLinkDialog) return;
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const response = await fetch("/api/couple/link", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    personId,
+                    coupleId: node.id,
+                    role: showLinkDialog,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Failed to link person");
+            }
+
+            // Refresh the graph data
+            if (onRefresh) {
+                onRefresh();
+            }
+
+            // Close dialogs and card
+            setShowLinkDialog(null);
+            setSearchTerm("");
+            onClose();
+        } catch (err) {
+            console.error("Error linking person:", err);
+            setError(err instanceof Error ? err.message : "Failed to link person");
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleSave = async () => {
@@ -245,6 +331,84 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
 
     // Render for CoupleNode
     if (node.nodeType === "couple") {
+        // If showing link dialog
+        if (showLinkDialog) {
+            return (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card className="w-[500px] bg-white max-h-[600px] flex flex-col">
+                            <CardHeader>
+                                <CardTitle>
+                                    Link Existing Person as {showLinkDialog === "partner" ? "Partner" : "Child"}
+                                </CardTitle>
+                                <CardDescription>Search and select a person from your family tree</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4 flex-1 overflow-hidden flex flex-col">
+                                {error && (
+                                    <div className="p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Search by name..."
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md">
+                                    {filteredPersons.length === 0 ? (
+                                        <div className="p-4 text-center text-gray-500">No persons found</div>
+                                    ) : (
+                                        <div className="divide-y">
+                                            {filteredPersons.map((person) => (
+                                                <div
+                                                    key={person.id}
+                                                    onClick={() => handleLinkExistingPerson(person.id)}
+                                                    className="p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                                                >
+                                                    <div className="font-semibold text-sm">
+                                                        {person.firstName} {person.lastName}
+                                                    </div>
+                                                    <div className="text-xs text-gray-600">
+                                                        Born: {person.dateOfBirth}
+                                                        {person.placeOfBirth && ` • ${person.placeOfBirth}`}
+                                                    </div>
+                                                    {person.dateOfDeath && (
+                                                        <div className="text-xs text-gray-600">
+                                                            Died: {person.dateOfDeath}
+                                                            {person.placeOfDeath && ` • ${person.placeOfDeath}`}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <button
+                                    onClick={() => {
+                                        setShowLinkDialog(null);
+                                        setSearchTerm("");
+                                        setError(null);
+                                    }}
+                                    disabled={isSaving}
+                                    className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
+                                >
+                                    {isSaving ? "Linking..." : "Cancel"}
+                                </button>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
                 <div onClick={(e) => e.stopPropagation()}>
@@ -347,10 +511,15 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     </div>
                                 </>
                             ) : (
-                                <p className="text-sm text-muted-foreground">
-                                    This is a couple relationship node connecting two partners. You can add a parent or
-                                    child to this couple.
-                                </p>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-muted-foreground">
+                                        This is a couple relationship node connecting two partners. You can:
+                                    </p>
+                                    <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
+                                        <li>Add a new parent/partner or child</li>
+                                        <li>Link an existing person as partner or child</li>
+                                    </ul>
+                                </div>
                             )}
                         </CardContent>
                         <CardFooter className="flex gap-2">
@@ -373,34 +542,56 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                 </>
                             ) : (
                                 <>
-                                    <button
-                                        onClick={() => setIsCreating("parent")}
-                                        disabled={isDeleting}
-                                        className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                    >
-                                        Add Parent
-                                    </button>
-                                    <button
-                                        onClick={() => setIsCreating("child")}
-                                        disabled={isDeleting}
-                                        className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                    >
-                                        Add Child
-                                    </button>
-                                    <button
-                                        onClick={handleDelete}
-                                        disabled={isDeleting}
-                                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-md transition-colors"
-                                    >
-                                        {isDeleting ? "Deleting..." : "Delete"}
-                                    </button>
-                                    <button
-                                        onClick={onClose}
-                                        disabled={isDeleting}
-                                        className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors"
-                                    >
-                                        Close
-                                    </button>
+                                    <div className="w-full space-y-2">
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setIsCreating("parent")}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm"
+                                            >
+                                                Add Parent
+                                            </button>
+                                            <button
+                                                onClick={() => setShowLinkDialog("partner")}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm"
+                                            >
+                                                Link Partner
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setIsCreating("child")}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm"
+                                            >
+                                                Add Child
+                                            </button>
+                                            <button
+                                                onClick={() => setShowLinkDialog("child")}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm"
+                                            >
+                                                Link Child
+                                            </button>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={handleDelete}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm"
+                                            >
+                                                {isDeleting ? "Deleting..." : "Delete"}
+                                            </button>
+                                            <button
+                                                onClick={onClose}
+                                                disabled={isDeleting}
+                                                className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed rounded-md transition-colors text-sm"
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
                                 </>
                             )}
                         </CardFooter>

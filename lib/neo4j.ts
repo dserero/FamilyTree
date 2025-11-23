@@ -407,6 +407,36 @@ export async function linkChildToRelationship(childId: string, relationshipId: s
     }
 }
 
+// Link an existing person as a partner to a couple
+export async function linkPartnerToCouple(personId: string, coupleId: string): Promise<void> {
+    const session = getSession();
+    try {
+        await session.run(
+            `MATCH (person:Person {id: $personId})
+             MATCH (couple:Couple {id: $coupleId})
+             CREATE (person)-[:PARTNER_IN]->(couple)`,
+            { personId, coupleId }
+        );
+    } finally {
+        await session.close();
+    }
+}
+
+// Link an existing person as a child to a couple
+export async function linkChildToCouple(personId: string, coupleId: string): Promise<void> {
+    const session = getSession();
+    try {
+        await session.run(
+            `MATCH (person:Person {id: $personId})
+             MATCH (couple:Couple {id: $coupleId})
+             CREATE (couple)-[:PARENT_OF]->(person)`,
+            { personId, coupleId }
+        );
+    } finally {
+        await session.close();
+    }
+}
+
 // Update a Person node
 export async function updatePersonNode(
     id: string,
