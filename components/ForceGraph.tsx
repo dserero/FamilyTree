@@ -237,13 +237,14 @@ const ForceGraph = () => {
         // Create links
         const link = container
             .append("g")
-            .selectAll("line")
+            .selectAll("path")
             .data(graphData.links)
-            .join("line")
+            .join("path")
             .attr("class", "link")
             .attr("stroke", (d: any) => linkColors[d.type as "marriage" | "parent-child"])
             .attr("stroke-opacity", 0.8)
             .attr("stroke-width", 2)
+            .attr("fill", "none")
             .attr("marker-end", (d: any) => `url(#arrowhead-${d.type})`)
             .style("cursor", "pointer")
             .on("click", (event: any, d: any) => {
@@ -258,31 +259,23 @@ const ForceGraph = () => {
                 d3.select(this).attr("stroke-width", 2).attr("stroke-opacity", 0.8);
             });
 
-        // Create nodes as foreign objects to embed HTML
+        // Create node groups
         const node = container
             .append("g")
-            .selectAll("foreignObject")
+            .selectAll("g")
             .data(graphData.nodes)
-            .join("foreignObject")
-            .attr("width", (d: any) => getNodeDimensions(d.nodeType).width)
-            .attr("height", (d: any) => getNodeDimensions(d.nodeType).height)
+            .join("g")
             .attr("class", "node")
+            .attr("id", (d: any) => `node-${d.id}`)
             .style("cursor", "pointer")
-            .style("overflow", "visible")
             .call(
                 d3
                     .drag<any, Node>()
                     .filter((event) => {
-                        // Only allow dragging with single touch or left mouse button
                         if (event.type === "touchstart") {
                             return event.touches.length === 1;
                         }
                         return event.button === 0;
-                    })
-                    .subject((event, d) => {
-                        // Get current transform to properly calculate drag coordinates
-                        const t = d3.zoomTransform(svg.node()!);
-                        return { x: t.applyX(d.x!), y: t.applyY(d.y!) };
                     })
                     .on("start", (event, d) => {
                         if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -290,10 +283,8 @@ const ForceGraph = () => {
                         d.fy = d.y;
                     })
                     .on("drag", (event, d) => {
-                        // Invert the zoom transform to get simulation coordinates
-                        const t = d3.zoomTransform(svg.node()!);
-                        d.fx = t.invertX(event.x);
-                        d.fy = t.invertY(event.y);
+                        d.fx = event.x;
+                        d.fy = event.y;
                     })
                     .on("end", (event, d) => {
                         if (!event.active) simulation.alphaTarget(0);
@@ -302,79 +293,90 @@ const ForceGraph = () => {
                     })
             );
 
-        // Add HTML card content to nodes
-        node.append("xhtml:div")
-            .attr("xmlns", "http://www.w3.org/1999/xhtml")
-            .style("display", "block")
-            .style("width", (d: any) => `${getNodeDimensions(d.nodeType).width}px`)
-            .style("height", (d: any) => `${getNodeDimensions(d.nodeType).height}px`)
-            .html((d: any) => {
-                if (d.nodeType === "couple") {
-                    return renderToStaticMarkup(<CoupleNodeComponent />);
-                } else {
-                    const person = d as PersonNode;
-                    return renderToStaticMarkup(
-                        <PersonCard
-                            firstName={person.firstName}
-                            lastName={person.lastName}
-                            dateOfBirth={person.dateOfBirth}
-                            dateOfDeath={person.dateOfDeath}
-                            placeOfBirth={person.placeOfBirth}
-                            placeOfDeath={person.placeOfDeath}
-                            gender={person.gender}
-                            photoCount={person.photoCount}
-                        />
-                    );
-                }
-            });
+        // Person nodes
+        const personNodes = node.filter((d: any) => d.nodeType === "person");
 
-        // Add click event to nodes and buttons
-        node.on("click", async (event, d: any) => {
-            // Check if the click was on a button
-            const target = event.target as HTMLElement;
+        const nodeWidth = 240;
+        let nodeHeight = 60; // Base height for name
 
+        personNodes.each(function (d: any) {
+            let height = 60;
+            if (d.dateOfBirth) height += 20;
+            if (d.placeOfBirth) height += 20;
+            if (d.dateOfDeath) height += 20;
+            if (d.placeOfDeath) height += 20;
+            d.nodeHeight = Math.max(nodeHeight, height);
+        });
+
+        personNodes
+            .append("rect")
+            .attr("width", nodeWidth)
+            .attr("height", (d: any) => d.nodeHeight)
+            .attr("rx", 15)
+            .attr("ry", 15)
+            .attr("fill", (d: any) => (d.gender === "male" ? "#E3F2FD" : "#FCE4EC"))
+            .attr("stroke", (d: any) => (d.gender === "male" ? "#90CAF9" : "#F48FB1"))
+            .attr("stroke-width", 2)
+            .style("filter", "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))");
+
+        // Person Name
+        personNodes
+            .append("text")
+            .attr("x", nodeWidth / 2)
+            .attr("y", 35)
+            .attr("text-anchor", "middle")
+            .style("font-size", "18px")
+            .style("font-weight", "700")
+            .style("fill", "#333")
+            .text((d: any) => d.name);
+
+        // Details
+        const details = personNodes
+            .append("text")
+            .attr("x", 20)
+            .attr("y", 65)
+            .style("font-size", "12px")
+            .style("fill", "#555");
+
+        details.each(function (d: any) {
+            const text = d3.select(this);
+            if (d.dateOfBirth) {
+                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`Born: ${d.dateOfBirth}`);
+            }
+            if (d.placeOfBirth) {
+                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`In: ${d.placeOfBirth}`);
+            }
+            if (d.dateOfDeath) {
+                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`Died: ${d.dateOfDeath}`);
+            }
+            if (d.placeOfDeath) {
+                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`In: ${d.placeOfDeath}`);
+            }
+        });
+
+        // Couple nodes
+        const coupleNodes = node.filter((d: any) => d.nodeType === "couple");
+        coupleNodes.append("circle").attr("r", 20).attr("fill", "#FFA500");
+
+        // Add click event to nodes
+        node.on("click", (event, d: any) => {
             event.stopPropagation();
-
-            if (target.classList.contains("node-edit-btn")) {
-                setInitialAction(null);
-                setSelectedNode(d);
-                return;
-            }
-
-            // Handle add person button for couple nodes
-            if (target.classList.contains("node-add-person-btn")) {
-                // Open the editable card which will show the dialog
-                setInitialAction(null);
-                setSelectedNode(d);
-                return;
-            }
-
-            // Handle couple creation button for person nodes
-            if (target.classList.contains("node-create-couple-btn")) {
-                // Open dialog to choose relationship type
-                setPendingPersonId(d.id);
-                setShowRelationDialog(true);
-                return;
-            }
-
-            // Default: open card on any node click
-            setInitialAction(null);
             setSelectedNode(d);
         });
 
         // Update positions on each tick
         simulation.on("tick", () => {
-            link.attr("x1", (d: any) => calculateLinkPosition(d.source, d.target, true).x)
-                .attr("y1", (d: any) => calculateLinkPosition(d.source, d.target, true).y)
-                .attr("x2", (d: any) => calculateLinkPosition(d.source, d.target, false).x)
-                .attr("y2", (d: any) => calculateLinkPosition(d.source, d.target, false).y);
+            link.attr("d", (d: any) => {
+                const source = d.source as Node;
+                const target = d.target as Node;
+                return `M${source.x},${source.y}L${target.x},${target.y}`;
+            });
 
-            // Use transform instead of x/y for better mobile browser support
             node.attr("transform", (d: any) => {
-                const dims = getNodeDimensions(d.nodeType);
-                const x = (d.x || 0) - dims.halfWidth;
-                const y = (d.y || 0) - dims.halfHeight;
-                return `translate(${x}, ${y})`;
+                if (d.nodeType === "person") {
+                    return `translate(${(d.x || 0) - 120}, ${(d.y || 0) - (d.nodeHeight || 90) / 2})`;
+                }
+                return `translate(${d.x || 0}, ${d.y || 0})`;
             });
         });
 
@@ -405,43 +407,25 @@ const ForceGraph = () => {
     const handleUpdateNode = (updatedNode: PersonNode) => {
         if (!data) return;
 
-        // Find the node in the data and update its properties in place
-        // This preserves D3's references for the force simulation
         const nodeToUpdate = data.nodes.find((node) => node.id === updatedNode.id);
         if (nodeToUpdate && nodeToUpdate.nodeType === "person") {
-            // Update properties in place
-            nodeToUpdate.firstName = updatedNode.firstName;
-            nodeToUpdate.lastName = updatedNode.lastName;
-            nodeToUpdate.name = updatedNode.name;
-            nodeToUpdate.dateOfBirth = updatedNode.dateOfBirth;
-            nodeToUpdate.dateOfDeath = updatedNode.dateOfDeath;
-            nodeToUpdate.placeOfBirth = updatedNode.placeOfBirth;
-            nodeToUpdate.placeOfDeath = updatedNode.placeOfDeath;
-            nodeToUpdate.gender = updatedNode.gender;
-            nodeToUpdate.photoCount = updatedNode.photoCount;
+            Object.assign(nodeToUpdate, updatedNode);
 
-            // Update the visual representation directly in the DOM
             const svg = d3.select(svgRef.current);
-            svg.selectAll("foreignObject")
-                .filter((d: any) => d.id === updatedNode.id)
-                .select("div")
-                .html(() => {
-                    return renderToStaticMarkup(
-                        <PersonCard
-                            firstName={updatedNode.firstName}
-                            lastName={updatedNode.lastName}
-                            dateOfBirth={updatedNode.dateOfBirth}
-                            dateOfDeath={updatedNode.dateOfDeath}
-                            placeOfBirth={updatedNode.placeOfBirth}
-                            placeOfDeath={updatedNode.placeOfDeath}
-                            gender={updatedNode.gender}
-                            photoCount={updatedNode.photoCount}
-                        />
-                    );
+            const personNode = svg.select(`#node-${updatedNode.id}`);
+
+            personNode.select("text").text(updatedNode.name);
+
+            personNode
+                .selectAll("text")
+                .filter((d, i) => i === 1)
+                .text(() => {
+                    const birth = updatedNode.dateOfBirth ? `b. ${updatedNode.dateOfBirth}` : "";
+                    const death = updatedNode.dateOfDeath ? `d. ${updatedNode.dateOfDeath}` : "";
+                    return [birth, death].filter(Boolean).join(" - ");
                 });
         }
 
-        // Close the card
         setSelectedNode(null);
     };
 
