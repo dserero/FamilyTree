@@ -76,6 +76,8 @@ const ForceGraph = () => {
     const [initialAction, setInitialAction] = useState<"parent" | "child" | null>(null);
     const [showRelationDialog, setShowRelationDialog] = useState(false);
     const [pendingPersonId, setPendingPersonId] = useState<string | null>(null);
+    const [selectedEdge, setSelectedEdge] = useState<Link | null>(null);
+    const [showFlipEdgeDialog, setShowFlipEdgeDialog] = useState(false);
 
     // Fetch data from Neo4j or use hardcoded data
     const fetchData = async () => {
@@ -188,8 +190,8 @@ const ForceGraph = () => {
             .filter((year: number) => !isNaN(year));
 
         const hasValidDates = validBirthYears.length > 0;
-        const minYear = hasValidDates ? Math.min(...validBirthYears) : 1950;
-        const maxYear = hasValidDates ? Math.max(...validBirthYears) : 2000;
+        const minYear = hasValidDates ? Math.min(...validBirthYears) : 1350;
+        const maxYear = hasValidDates ? Math.max(...validBirthYears) : 2500;
 
         console.log("Birth year range:", { minYear, maxYear, hasValidDates, validBirthYears });
 
@@ -205,10 +207,10 @@ const ForceGraph = () => {
                     .distance(200)
                     .strength(3)
             )
-            .force("charge", d3.forceManyBody().strength(-30000))
+            .force("charge", d3.forceManyBody().strength(-100000))
             .force("center", d3.forceCenter(width / 2, height / 2))
             .force("collision", d3.forceCollide().radius(120))
-            .force("x", d3.forceX(width / 2).strength(0.1))
+            .force("x", d3.forceX(width / 2).strength(1))
             .force(
                 "y",
                 d3
@@ -229,7 +231,7 @@ const ForceGraph = () => {
                             return height / 2;
                         }
                     })
-                    .strength(hasValidDates ? 1 : 0.3) // Weaker Y force when no dates available
+                    .strength(hasValidDates ? 3 : 0.3) // Weaker Y force when no dates available
             );
 
         // Create links
@@ -242,7 +244,19 @@ const ForceGraph = () => {
             .attr("stroke", (d: any) => linkColors[d.type as "marriage" | "parent-child"])
             .attr("stroke-opacity", 0.8)
             .attr("stroke-width", 2)
-            .attr("marker-end", (d: any) => `url(#arrowhead-${d.type})`);
+            .attr("marker-end", (d: any) => `url(#arrowhead-${d.type})`)
+            .style("cursor", "pointer")
+            .on("click", (event: any, d: any) => {
+                event.stopPropagation();
+                setSelectedEdge(d);
+                setShowFlipEdgeDialog(true);
+            })
+            .on("mouseenter", function (this: any) {
+                d3.select(this).attr("stroke-width", 4).attr("stroke-opacity", 1);
+            })
+            .on("mouseleave", function (this: any) {
+                d3.select(this).attr("stroke-width", 2).attr("stroke-opacity", 0.8);
+            });
 
         // Create nodes as foreign objects to embed HTML
         const node = container
@@ -455,6 +469,36 @@ const ForceGraph = () => {
         }
     };
 
+    const handleFlipEdge = async () => {
+        if (!selectedEdge || !selectedEdge.personId || !selectedEdge.coupleId) return;
+
+        try {
+            const response = await fetch("/api/flip-edge", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    personId: selectedEdge.personId,
+                    coupleId: selectedEdge.coupleId,
+                }),
+            });
+
+            if (response.ok) {
+                await fetchData(); // Refresh the graph
+                setShowFlipEdgeDialog(false);
+                setSelectedEdge(null);
+            } else {
+                const errorData = await response.json();
+                console.error("Failed to flip edge:", errorData.error);
+                alert(`Failed to flip edge: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error("Error flipping edge:", error);
+            alert("Error flipping edge");
+        }
+    };
+
     const handleSearchSelect = (nodeId: string) => {
         if (!data || !svgRef.current || !zoomRef.current) return;
 
@@ -589,6 +633,72 @@ const ForceGraph = () => {
                                     className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
                                 >
                                     Cancel
+                                </button>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
+            )}
+            {showFlipEdgeDialog && selectedEdge && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    onClick={() => {
+                        setShowFlipEdgeDialog(false);
+                        setSelectedEdge(null);
+                    }}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card className="w-[450px] bg-white">
+                            <CardHeader>
+                                <CardTitle>Flip Edge Relationship</CardTitle>
+                                <CardDescription>Change the relationship type</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <p className="text-sm text-gray-700">
+                                    This edge is currently a{" "}
+                                    <strong>
+                                        {selectedEdge.type === "marriage" ? '"Partner in Couple"' : '"Child in Couple"'}
+                                    </strong>{" "}
+                                    relationship.
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Do you want to flip it to a{" "}
+                                    <strong>
+                                        {selectedEdge.type === "marriage" ? '"Child in Couple"' : '"Partner in Couple"'}
+                                    </strong>{" "}
+                                    relationship?
+                                </p>
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p className="text-sm">
+                                        {selectedEdge.type === "marriage" ? (
+                                            <>
+                                                <span className="text-purple-700">💑 Partner in Couple</span> →{" "}
+                                                <span className="text-green-700">👨‍👩‍👦 Child in Couple</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-green-700">👨‍👩‍👦 Child in Couple</span> →{" "}
+                                                <span className="text-purple-700">💑 Partner in Couple</span>
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        setShowFlipEdgeDialog(false);
+                                        setSelectedEdge(null);
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleFlipEdge}
+                                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                >
+                                    Flip Relationship
                                 </button>
                             </CardFooter>
                         </Card>

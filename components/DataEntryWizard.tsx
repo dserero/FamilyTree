@@ -50,6 +50,8 @@ export default function DataEntryWizard({ startPersonId }: { startPersonId: stri
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [completed, setCompleted] = useState(false);
+    const [totalQuestions, setTotalQuestions] = useState(0);
+    const [answeredQuestions, setAnsweredQuestions] = useState(0);
 
     useEffect(() => {
         fetchIncompleteData();
@@ -60,10 +62,16 @@ export default function DataEntryWizard({ startPersonId }: { startPersonId: stri
         try {
             const response = await fetch(`/api/data-entry?startPersonId=${startPersonId}`);
             const data = await response.json();
-            setPeople(data.people || []);
-            if (data.people.length === 0) {
-                setCompleted(true);
-            }
+            const incompletePeople: Person[] = data.people || [];
+
+            setPeople(incompletePeople);
+
+            const total = incompletePeople.reduce((sum, person) => sum + person.missingFields.length, 0);
+            setTotalQuestions(total);
+            setAnsweredQuestions(0);
+            setCurrentPersonIndex(0);
+            setCurrentQuestionIndex(0);
+            setCompleted(total === 0);
         } catch (error) {
             console.error("Error fetching incomplete data:", error);
         } finally {
@@ -106,6 +114,8 @@ export default function DataEntryWizard({ startPersonId }: { startPersonId: stri
                         : person
                 )
             );
+
+            setAnsweredQuestions((prev) => Math.min(prev + 1, totalQuestions));
 
             moveToNextQuestion();
         } catch (error) {
@@ -171,10 +181,8 @@ export default function DataEntryWizard({ startPersonId }: { startPersonId: stri
         );
     }
 
-    const progress =
-        ((currentPersonIndex * currentQuestions.length + currentQuestionIndex) /
-            people.reduce((sum, p) => sum + QUESTIONS.filter((q) => p.missingFields.includes(q.field)).length, 0)) *
-        100;
+    const rawProgress = totalQuestions === 0 ? 100 : (answeredQuestions / totalQuestions) * 100;
+    const progress = Math.min(100, Math.max(0, rawProgress));
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -266,6 +274,7 @@ export default function DataEntryWizard({ startPersonId }: { startPersonId: stri
                                                                 : person
                                                         )
                                                     );
+                                                    setAnsweredQuestions((prev) => Math.min(prev + 1, totalQuestions));
                                                     moveToNextQuestion();
                                                 })
                                                 .finally(() => setSaving(false));

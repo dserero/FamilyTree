@@ -30,6 +30,10 @@ export interface Link {
     source: string | Node; // UUID string or Node object
     target: string | Node; // UUID string or Node object
     type: "marriage" | "parent-child";
+    // For identifying the relationship: when type is "marriage", source is Person, target is Couple
+    // when type is "parent-child", source is Couple, target is Person
+    personId?: string; // Person ID involved in the relationship
+    coupleId?: string; // Couple ID involved in the relationship
 }
 
 export const linkColors = {

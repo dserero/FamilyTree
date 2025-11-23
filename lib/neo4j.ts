@@ -85,24 +85,44 @@ export const getFamilyTreeData = async () => {
         });
 
         // Process edges - use string IDs (UUIDs)
-        const marriageLinks: Array<{ source: string; target: string; type: "marriage" }> = [];
-        const parentChildLinks: Array<{ source: string; target: string; type: "parent-child" }> = [];
+        const marriageLinks: Array<{
+            source: string;
+            target: string;
+            type: "marriage";
+            personId: string;
+            coupleId: string;
+        }> = [];
+        const parentChildLinks: Array<{
+            source: string;
+            target: string;
+            type: "parent-child";
+            personId: string;
+            coupleId: string;
+        }> = [];
 
         // PARTNER_IN edges (person -> relationship)
         partnerInResult.records.forEach((record) => {
+            const personId = record.get("personId");
+            const coupleId = record.get("relationshipId");
             marriageLinks.push({
-                source: record.get("personId"),
-                target: record.get("relationshipId"),
+                source: personId,
+                target: coupleId,
                 type: "marriage",
+                personId,
+                coupleId,
             });
         });
 
         // PARENT_OF edges (relationship -> child)
         parentOfResult.records.forEach((record) => {
+            const personId = record.get("childId");
+            const coupleId = record.get("relationshipId");
             parentChildLinks.push({
-                source: record.get("relationshipId"),
-                target: record.get("childId"),
+                source: coupleId,
+                target: personId,
                 type: "parent-child",
+                personId,
+                coupleId,
             });
         });
 
@@ -494,6 +514,70 @@ export async function deleteCoupleNode(id: string): Promise<void> {
              DETACH DELETE c`,
             { id }
         );
+    } finally {
+        await session.close();
+    }
+}
+
+// Flip edge relationship between PARTNER_IN and PARENT_OF
+export async function flipEdgeRelationship(personId: string, coupleId: string): Promise<void> {
+    const session = getSession();
+    try {
+        // First, check what relationship exists
+        const checkResult = await session.run(
+            `MATCH (p:Person {id: $personId})
+             MATCH (c:Couple {id: $coupleId})
+             OPTIONAL MATCH (p)-[r1:PARTNER_IN]->(c)
+             OPTIONAL MATCH (c)-[r2:PARENT_OF]->(p)
+             RETURN r1, r2`,
+            { personId, coupleId }
+        );
+
+        if (checkResult.records.length === 0) {
+            throw new Error("Person or Couple not found");
+        }
+
+        const record = checkResult.records[0];
+        const hasPartnerIn = record.get("r1") !== null;
+        const hasParentOf = record.get("r2") !== null;
+
+        if (!hasPartnerIn && !hasParentOf) {
+            throw new Error("No relationship exists between this person and couple");
+        }
+
+        if (hasPartnerIn) {
+            // Flip from PARTNER_IN to PARENT_OF
+            // Delete existing PARTNER_IN relationship
+            await session.run(
+                `MATCH (p:Person {id: $personId})-[r:PARTNER_IN]->(c:Couple {id: $coupleId})
+                 DELETE r`,
+                { personId, coupleId }
+            );
+
+            // Create PARENT_OF relationship
+            await session.run(
+                `MATCH (p:Person {id: $personId})
+                 MATCH (c:Couple {id: $coupleId})
+                 CREATE (c)-[:PARENT_OF]->(p)`,
+                { personId, coupleId }
+            );
+        } else if (hasParentOf) {
+            // Flip from PARENT_OF to PARTNER_IN
+            // Delete existing PARENT_OF relationship
+            await session.run(
+                `MATCH (c:Couple {id: $coupleId})-[r:PARENT_OF]->(p:Person {id: $personId})
+                 DELETE r`,
+                { personId, coupleId }
+            );
+
+            // Create PARTNER_IN relationship
+            await session.run(
+                `MATCH (p:Person {id: $personId})
+                 MATCH (c:Couple {id: $coupleId})
+                 CREATE (p)-[:PARTNER_IN]->(c)`,
+                { personId, coupleId }
+            );
+        }
     } finally {
         await session.close();
     }

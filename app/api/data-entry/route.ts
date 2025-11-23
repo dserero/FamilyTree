@@ -34,7 +34,11 @@ export async function GET(request: Request) {
             if (!person.lastName) missingFields.push("lastName");
             if (!person.dateOfBirth) missingFields.push("dateOfBirth");
             if (!person.placeOfBirth) missingFields.push("placeOfBirth");
-            if (!person.gender || person.gender === "male") missingFields.push("gender"); // Assume male is default
+
+            const normalizedGender = typeof person.gender === "string" ? person.gender.toLowerCase() : "";
+            if (!normalizedGender || normalizedGender === "unknown" || normalizedGender === "unspecified") {
+                missingFields.push("gender");
+            }
 
             return {
                 id: person.id,
