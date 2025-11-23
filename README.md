@@ -1,6 +1,6 @@
 # D3 Family Tree
 
-A Next.js application for visualizing family trees using D3.js and Neo4j. hello
+A Next.js application for visualizing family trees using D3.js and Neo4j. trigger
 
 ## Features
 
