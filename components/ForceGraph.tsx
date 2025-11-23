@@ -66,6 +66,25 @@ const SAMPLE_DATA = {
     ],
 };
 
+const getPersonDetailRows = (person: Partial<PersonNode>) => {
+    const rows: Array<{ label: string; value: string }> = [
+        { label: "Date of Birth", value: person.dateOfBirth || "Unknown" },
+        { label: "Place of Birth", value: person.placeOfBirth || "Unknown" },
+    ];
+
+    if (person.dateOfDeath) {
+        rows.push({ label: "Date of Death", value: person.dateOfDeath });
+        rows.push({
+            label: "Place of Death",
+            value: person.placeOfDeath || "Unknown",
+        });
+    } else if (person.placeOfDeath) {
+        rows.push({ label: "Place of Death", value: person.placeOfDeath });
+    }
+
+    return rows;
+};
+
 const ForceGraph = () => {
     const svgRef = useRef<SVGSVGElement>(null);
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
@@ -296,67 +315,292 @@ const ForceGraph = () => {
         // Person nodes
         const personNodes = node.filter((d: any) => d.nodeType === "person");
 
-        const nodeWidth = 240;
-        let nodeHeight = 60; // Base height for name
+        const nodeWidth = 220;
+        const basePadding = 16;
+        const headerHeight = 50;
+        const rowHeight = 38; // Increased to prevent overlap between label-value pairs
+        const buttonSectionHeight = 44; // Space for action buttons
 
+        // Calculate dynamic height for each node
         personNodes.each(function (d: any) {
-            let height = 60;
-            if (d.dateOfBirth) height += 20;
-            if (d.placeOfBirth) height += 20;
-            if (d.dateOfDeath) height += 20;
-            if (d.placeOfDeath) height += 20;
-            d.nodeHeight = Math.max(nodeHeight, height);
+            const detailRows = getPersonDetailRows(d);
+            d.nodeHeight = headerHeight + basePadding + detailRows.length * rowHeight + buttonSectionHeight;
         });
+
+        // Main card background with gradient
+        personNodes
+            .append("defs")
+            .append("linearGradient")
+            .attr("id", (d: any) => `gradient-${d.id}`)
+            .attr("x1", "0%")
+            .attr("y1", "0%")
+            .attr("x2", "0%")
+            .attr("y2", "100%")
+            .selectAll("stop")
+            .data((d: any) => {
+                if (d.gender === "male") {
+                    return [
+                        { offset: "0%", color: "#BBDEFB" },
+                        { offset: "100%", color: "#E3F2FD" },
+                    ];
+                } else {
+                    return [
+                        { offset: "0%", color: "#F8BBD0" },
+                        { offset: "100%", color: "#FCE4EC" },
+                    ];
+                }
+            })
+            .enter()
+            .append("stop")
+            .attr("offset", (d: any) => d.offset)
+            .attr("stop-color", (d: any) => d.color);
 
         personNodes
             .append("rect")
             .attr("width", nodeWidth)
             .attr("height", (d: any) => d.nodeHeight)
-            .attr("rx", 15)
-            .attr("ry", 15)
-            .attr("fill", (d: any) => (d.gender === "male" ? "#E3F2FD" : "#FCE4EC"))
-            .attr("stroke", (d: any) => (d.gender === "male" ? "#90CAF9" : "#F48FB1"))
-            .attr("stroke-width", 2)
-            .style("filter", "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))");
+            .attr("rx", 16)
+            .attr("ry", 16)
+            .attr("fill", (d: any) => `url(#gradient-${d.id})`)
+            .attr("stroke", (d: any) => (d.gender === "male" ? "#64B5F6" : "#F06292"))
+            .attr("stroke-width", 2.5)
+            .style("filter", "drop-shadow(0px 4px 8px rgba(0,0,0,0.15))");
+
+        // Header section with name
+        personNodes
+            .append("rect")
+            .attr("width", nodeWidth)
+            .attr("height", headerHeight)
+            .attr("rx", 16)
+            .attr("ry", 16)
+            .attr("fill", (d: any) => (d.gender === "male" ? "rgba(33, 150, 243, 0.15)" : "rgba(233, 30, 99, 0.15)"));
 
         // Person Name
         personNodes
             .append("text")
             .attr("x", nodeWidth / 2)
-            .attr("y", 35)
+            .attr("y", headerHeight / 2 + 5)
             .attr("text-anchor", "middle")
-            .style("font-size", "18px")
+            .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+            .style("font-size", "16px")
             .style("font-weight", "700")
-            .style("fill", "#333")
+            .style("fill", (d: any) => (d.gender === "male" ? "#1565C0" : "#C2185B"))
+            .style("letter-spacing", "0.3px")
             .text((d: any) => d.name);
 
-        // Details
-        const details = personNodes
-            .append("text")
-            .attr("x", 20)
-            .attr("y", 65)
-            .style("font-size", "12px")
-            .style("fill", "#555");
+        // Details section with label-value pairs
+        personNodes.each(function (d: any) {
+            const nodeGroup = d3.select(this);
+            const detailRows = getPersonDetailRows(d);
+            let yOffset = headerHeight + basePadding;
 
-        details.each(function (d: any) {
-            const text = d3.select(this);
-            if (d.dateOfBirth) {
-                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`Born: ${d.dateOfBirth}`);
-            }
-            if (d.placeOfBirth) {
-                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`In: ${d.placeOfBirth}`);
-            }
-            if (d.dateOfDeath) {
-                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`Died: ${d.dateOfDeath}`);
-            }
-            if (d.placeOfDeath) {
-                text.append("tspan").attr("x", 20).attr("dy", "1.2em").text(`In: ${d.placeOfDeath}`);
-            }
+            detailRows.forEach((row, index) => {
+                const currentY = yOffset + index * rowHeight;
+
+                // Label
+                nodeGroup
+                    .append("text")
+                    .attr("x", basePadding)
+                    .attr("y", currentY + 12)
+                    .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                    .style("font-size", "9px")
+                    .style("font-weight", "600")
+                    .style("fill", "#757575")
+                    .style("text-transform", "uppercase")
+                    .style("letter-spacing", "0.5px")
+                    .text(row.label);
+
+                // Value
+                nodeGroup
+                    .append("text")
+                    .attr("x", basePadding)
+                    .attr("y", currentY + 28)
+                    .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                    .style("font-size", "12px")
+                    .style("font-weight", "500")
+                    .style("fill", "#212121")
+                    .text(row.value);
+            });
+        });
+
+        // Action buttons section
+        personNodes.each(function (d: any) {
+            const nodeGroup = d3.select(this);
+            const buttonY = d.nodeHeight - 36;
+            const buttonHeight = 28;
+            const buttonPadding = 8;
+
+            // Edit button (left side)
+            const editButton = nodeGroup
+                .append("g")
+                .attr("class", "edit-button")
+                .style("cursor", "pointer")
+                .on("click", function (event: any) {
+                    event.stopPropagation();
+                    setSelectedNode(d);
+                });
+
+            editButton
+                .append("rect")
+                .attr("x", basePadding)
+                .attr("y", buttonY)
+                .attr("width", 65)
+                .attr("height", buttonHeight)
+                .attr("rx", 6)
+                .attr("fill", (dd: any) => (dd.gender === "male" ? "#2196F3" : "#E91E63"))
+                .attr("opacity", 0.9)
+                .style("transition", "opacity 0.2s");
+
+            editButton
+                .append("text")
+                .attr("x", basePadding + 33)
+                .attr("y", buttonY + buttonHeight / 2 + 5)
+                .attr("text-anchor", "middle")
+                .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                .style("font-size", "11px")
+                .style("font-weight", "600")
+                .style("fill", "#fff")
+                .text("✏️ Edit");
+
+            editButton
+                .on("mouseenter", function () {
+                    d3.select(this).select("rect").attr("opacity", 1);
+                })
+                .on("mouseleave", function () {
+                    d3.select(this).select("rect").attr("opacity", 0.9);
+                });
+
+            // Add Relationship button (right side)
+            const addButton = nodeGroup
+                .append("g")
+                .attr("class", "add-button")
+                .style("cursor", "pointer")
+                .on("click", function (event: any) {
+                    event.stopPropagation();
+                    setPendingPersonId(d.id);
+                    setShowRelationDialog(true);
+                });
+
+            addButton
+                .append("rect")
+                .attr("x", nodeWidth - basePadding - 95)
+                .attr("y", buttonY)
+                .attr("width", 95)
+                .attr("height", buttonHeight)
+                .attr("rx", 6)
+                .attr("fill", "#4CAF50")
+                .attr("opacity", 0.9)
+                .style("transition", "opacity 0.2s");
+
+            addButton
+                .append("text")
+                .attr("x", nodeWidth - basePadding - 47.5)
+                .attr("y", buttonY + buttonHeight / 2 + 5)
+                .attr("text-anchor", "middle")
+                .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                .style("font-size", "11px")
+                .style("font-weight", "600")
+                .style("fill", "#fff")
+                .text("➕ Add Family");
+
+            addButton
+                .on("mouseenter", function () {
+                    d3.select(this).select("rect").attr("opacity", 1);
+                })
+                .on("mouseleave", function () {
+                    d3.select(this).select("rect").attr("opacity", 0.9);
+                });
         });
 
         // Couple nodes
         const coupleNodes = node.filter((d: any) => d.nodeType === "couple");
-        coupleNodes.append("circle").attr("r", 20).attr("fill", "#FFA500");
+
+        // Gradient for couple nodes
+        coupleNodes
+            .append("defs")
+            .append("radialGradient")
+            .attr("id", (d: any) => `couple-gradient-${d.id}`)
+            .selectAll("stop")
+            .data([
+                { offset: "0%", color: "#FFB74D" },
+                { offset: "100%", color: "#FF9800" },
+            ])
+            .enter()
+            .append("stop")
+            .attr("offset", (d: any) => d.offset)
+            .attr("stop-color", (d: any) => d.color);
+
+        // Main circle
+        coupleNodes
+            .append("circle")
+            .attr("r", 28)
+            .attr("fill", (d: any) => `url(#couple-gradient-${d.id})`)
+            .attr("stroke", "#F57C00")
+            .attr("stroke-width", 2.5)
+            .style("filter", "drop-shadow(0px 3px 6px rgba(0,0,0,0.2))");
+
+        // Heart icon in center
+        coupleNodes
+            .append("text")
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "central")
+            .style("font-size", "20px")
+            .style("cursor", "pointer")
+            .text("💑");
+
+        // Add relationship button for couple nodes
+        coupleNodes.each(function (d: any) {
+            const coupleGroup = d3.select(this);
+            const buttonRadius = 14;
+            const buttonOffset = 35;
+
+            const addButton = coupleGroup
+                .append("g")
+                .attr("class", "couple-add-button")
+                .style("cursor", "pointer")
+                .on("click", function (event: any) {
+                    event.stopPropagation();
+                    setSelectedNode(d);
+                });
+
+            // Button background
+            addButton
+                .append("circle")
+                .attr("cx", buttonOffset)
+                .attr("cy", 0)
+                .attr("r", buttonRadius)
+                .attr("fill", "#4CAF50")
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 2)
+                .attr("opacity", 0.95)
+                .style("filter", "drop-shadow(0px 2px 4px rgba(0,0,0,0.2))")
+                .style("transition", "all 0.2s");
+
+            // Plus icon
+            addButton
+                .append("text")
+                .attr("x", buttonOffset)
+                .attr("y", 0)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .style("font-size", "18px")
+                .style("font-weight", "bold")
+                .style("fill", "#fff")
+                .style("pointer-events", "none")
+                .text("+");
+
+            // Hover effects
+            addButton
+                .on("mouseenter", function () {
+                    d3.select(this)
+                        .select("circle")
+                        .attr("opacity", 1)
+                        .attr("r", buttonRadius + 2);
+                })
+                .on("mouseleave", function () {
+                    d3.select(this).select("circle").attr("opacity", 0.95).attr("r", buttonRadius);
+                });
+        });
 
         // Add click event to nodes
         node.on("click", (event, d: any) => {
@@ -374,7 +618,7 @@ const ForceGraph = () => {
 
             node.attr("transform", (d: any) => {
                 if (d.nodeType === "person") {
-                    return `translate(${(d.x || 0) - 120}, ${(d.y || 0) - (d.nodeHeight || 90) / 2})`;
+                    return `translate(${(d.x || 0) - 110}, ${(d.y || 0) - (d.nodeHeight || 90) / 2})`;
                 }
                 return `translate(${d.x || 0}, ${d.y || 0})`;
             });
@@ -581,32 +825,46 @@ const ForceGraph = () => {
                     }}
                 >
                     <div onClick={(e) => e.stopPropagation()}>
-                        <Card className="w-[400px] bg-white">
+                        <Card className="w-[480px] bg-white">
                             <CardHeader>
-                                <CardTitle>Create Couple Node</CardTitle>
-                                <CardDescription>Choose the relationship type</CardDescription>
+                                <CardTitle>Add Family Relationship</CardTitle>
+                                <CardDescription>Choose how this person is connected to their family</CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
-                                <p className="text-sm text-gray-600">
-                                    How should this person be connected to the new couple node?
-                                </p>
-                                <div className="space-y-2">
+                            <CardContent className="space-y-3">
+                                <p className="text-sm text-gray-700 mb-4">Select the type of relationship to create:</p>
+                                <div className="space-y-3">
                                     <button
                                         onClick={() => handleCreateCouple("partner")}
-                                        className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors text-left"
+                                        className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
                                     >
-                                        <div className="font-semibold">💑 As Partner/Lover</div>
-                                        <div className="text-sm opacity-90">
-                                            Create a couple node where this person is one of the partners
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-2xl">💑</div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-base mb-1">
+                                                    I am a Partner in a Family
+                                                </div>
+                                                <div className="text-sm opacity-90">
+                                                    Create a family unit where this person has a spouse/partner. This
+                                                    allows you to add children to this family.
+                                                </div>
+                                            </div>
                                         </div>
                                     </button>
                                     <button
                                         onClick={() => handleCreateCouple("child")}
-                                        className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors text-left"
+                                        className="w-full px-5 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
                                     >
-                                        <div className="font-semibold">👨‍👩‍👦 As Child</div>
-                                        <div className="text-sm opacity-90">
-                                            Create a couple node where this person is a child of that couple
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-2xl">👨‍👩‍👦</div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-base mb-1">
+                                                    I am a Child in a Family
+                                                </div>
+                                                <div className="text-sm opacity-90">
+                                                    Create a family unit where this person is a child. This connects
+                                                    them to their parents' family.
+                                                </div>
+                                            </div>
                                         </div>
                                     </button>
                                 </div>
@@ -617,7 +875,7 @@ const ForceGraph = () => {
                                         setShowRelationDialog(false);
                                         setPendingPersonId(null);
                                     }}
-                                    className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                                    className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors font-medium"
                                 >
                                     Cancel
                                 </button>
