@@ -38,6 +38,13 @@ jobs:
                       echo "NEO4J_DATABASE=${{ secrets.NEO4J_DATABASE }}" >> .env.local
                       echo "AURA_INSTANCEID=${{ secrets.AURA_INSTANCEID }}" >> .env.local
                       echo "AURA_INSTANCENAME=${{ secrets.AURA_INSTANCENAME }}" >> .env.local
+                      echo "" >> .env.local
+                      echo "# Backblaze B2 Configuration" >> .env.local
+                      echo "B2_KEY_ID=${{ secrets.B2_KEY_ID }}" >> .env.local
+                      echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env.local
+                      echo "B2_REGION=${{ secrets.B2_REGION }}" >> .env.local
+                      echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env.local
+                      echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env.local
 
                       # Stop and remove old containers
                       docker-compose down
