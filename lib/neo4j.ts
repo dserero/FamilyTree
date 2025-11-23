@@ -622,3 +622,203 @@ export async function clearDatabase(): Promise<void> {
         await session.close();
     }
 }
+
+// ==================== Photo Management Functions ====================
+
+// Create a Photo node
+export async function createPhoto(photoData: {
+    url: string;
+    caption?: string;
+    location?: string;
+    dateTaken?: string;
+    comments?: string;
+}): Promise<{ id: string; url: string }> {
+    const session = getSession();
+    try {
+        const properties: any = {
+            url: photoData.url,
+            uploadedAt: new Date().toISOString(),
+        };
+
+        if (photoData.caption) properties.caption = photoData.caption;
+        if (photoData.location) properties.location = photoData.location;
+        if (photoData.dateTaken) properties.dateTaken = photoData.dateTaken;
+        if (photoData.comments) properties.comments = photoData.comments;
+
+        const result = await session.run(
+            `CREATE (photo:Photo {
+                id: randomUUID(),
+                url: $url,
+                uploadedAt: $uploadedAt
+                ${photoData.caption ? ", caption: $caption" : ""}
+                ${photoData.location ? ", location: $location" : ""}
+                ${photoData.dateTaken ? ", dateTaken: $dateTaken" : ""}
+                ${photoData.comments ? ", comments: $comments" : ""}
+             })
+             RETURN photo`,
+            properties
+        );
+
+        const node = result.records[0].get("photo");
+        return {
+            id: node.properties.id,
+            url: node.properties.url,
+        };
+    } finally {
+        await session.close();
+    }
+}
+
+// Link a photo to a person (APPEARS_IN relationship)
+export async function linkPhotoToPerson(photoId: string, personId: string): Promise<void> {
+    const session = getSession();
+    try {
+        await session.run(
+            `MATCH (photo:Photo {id: $photoId})
+             MATCH (person:Person {id: $personId})
+             CREATE (person)-[:APPEARS_IN]->(photo)`,
+            { photoId, personId }
+        );
+    } finally {
+        await session.close();
+    }
+}
+
+// Get all photos for a specific person
+export async function getPhotosForPerson(personId: string): Promise<
+    Array<{
+        id: string;
+        url: string;
+        caption?: string;
+        location?: string;
+        dateTaken?: string;
+        comments?: string;
+        uploadedAt: string;
+    }>
+> {
+    const session = getSession();
+    try {
+        const result = await session.run(
+            `MATCH (person:Person {id: $personId})-[:APPEARS_IN]->(photo:Photo)
+             RETURN photo
+             ORDER BY photo.uploadedAt DESC`,
+            { personId }
+        );
+
+        return result.records.map((record) => {
+            const photo = record.get("photo").properties;
+            return {
+                id: photo.id,
+                url: photo.url,
+                caption: photo.caption,
+                location: photo.location,
+                dateTaken: photo.dateTaken,
+                comments: photo.comments,
+                uploadedAt: photo.uploadedAt,
+            };
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+// Get all photos with people tagged in them
+export async function getAllPhotos(): Promise<
+    Array<{
+        id: string;
+        url: string;
+        caption?: string;
+        location?: string;
+        dateTaken?: string;
+        comments?: string;
+        uploadedAt: string;
+        people: Array<{ id: string; name: string }>;
+    }>
+> {
+    const session = getSession();
+    try {
+        const result = await session.run(
+            `MATCH (photo:Photo)
+             OPTIONAL MATCH (person:Person)-[:APPEARS_IN]->(photo)
+             RETURN photo, collect({id: person.id, name: person.name}) as people
+             ORDER BY photo.uploadedAt DESC`
+        );
+
+        return result.records.map((record) => {
+            const photo = record.get("photo").properties;
+            const people = record.get("people").filter((p: any) => p.id !== null);
+            return {
+                id: photo.id,
+                url: photo.url,
+                caption: photo.caption,
+                location: photo.location,
+                dateTaken: photo.dateTaken,
+                comments: photo.comments,
+                uploadedAt: photo.uploadedAt,
+                people,
+            };
+        });
+    } finally {
+        await session.close();
+    }
+}
+
+// Delete a photo node
+export async function deletePhoto(photoId: string): Promise<void> {
+    const session = getSession();
+    try {
+        await session.run(
+            `MATCH (photo:Photo {id: $photoId})
+             DETACH DELETE photo`,
+            { photoId }
+        );
+    } finally {
+        await session.close();
+    }
+}
+
+// Update photo metadata
+export async function updatePhoto(
+    photoId: string,
+    updates: {
+        caption?: string;
+        location?: string;
+        dateTaken?: string;
+        comments?: string;
+    }
+): Promise<void> {
+    const session = getSession();
+    try {
+        const setClauses: string[] = [];
+        const params: Record<string, any> = { photoId };
+
+        if (updates.caption !== undefined) {
+            setClauses.push("photo.caption = $caption");
+            params.caption = updates.caption;
+        }
+        if (updates.location !== undefined) {
+            setClauses.push("photo.location = $location");
+            params.location = updates.location;
+        }
+        if (updates.dateTaken !== undefined) {
+            setClauses.push("photo.dateTaken = $dateTaken");
+            params.dateTaken = updates.dateTaken;
+        }
+        if (updates.comments !== undefined) {
+            setClauses.push("photo.comments = $comments");
+            params.comments = updates.comments;
+        }
+
+        if (setClauses.length === 0) {
+            return;
+        }
+
+        await session.run(
+            `MATCH (photo:Photo {id: $photoId})
+             SET ${setClauses.join(", ")}`,
+            params
+        );
+    } finally {
+        await session.close();
+    }
+}

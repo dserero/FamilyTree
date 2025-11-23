@@ -24,6 +24,16 @@ export interface CoupleNode {
     fy?: number | null;
 }
 
+export interface PhotoNode {
+    id: string; // UUID string
+    url: string; // B2 storage URL
+    caption?: string;
+    location?: string;
+    dateTaken?: string;
+    comments?: string;
+    uploadedAt: string;
+}
+
 export type Node = PersonNode | CoupleNode;
 
 export interface Link {

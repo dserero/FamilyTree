@@ -1,0 +1,12 @@
+{
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "package.json": "package-lock.json, .npmrc, .nvmrc",
+        "tsconfig.json": "tsconfig.*.json, next-env.d.ts",
+        "next.config.js": "next-env.d.ts, postcss.config.js, tailwind.config.ts",
+        "docker-compose.yml": "Dockerfile, .dockerignore",
+        "README.md": "DEPLOYMENT.md",
+        ".gitignore": ".gitattributes, .env.local, .env.example, .env"
+    }
+}
