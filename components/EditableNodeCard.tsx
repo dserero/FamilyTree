@@ -285,11 +285,15 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Date of Birth</label>
                                         <input
-                                            type="date"
+                                            type="text"
                                             value={formData.dateOfBirth}
                                             onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                                            placeholder="YYYY or YYYY-MM-DD"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter year only (e.g., 1990) or full date (e.g., 1990-05-15)
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">
@@ -307,11 +311,15 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                             Date of Death (optional)
                                         </label>
                                         <input
-                                            type="date"
+                                            type="text"
                                             value={formData.dateOfDeath}
                                             onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
+                                            placeholder="YYYY or YYYY-MM-DD"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter year only (e.g., 2020) or full date (e.g., 2020-12-31)
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">
@@ -485,11 +493,15 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Date of Birth</label>
                                         <input
-                                            type="date"
+                                            type="text"
                                             value={formData.dateOfBirth}
                                             onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                                            placeholder="YYYY or YYYY-MM-DD"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter year only (e.g., 1990) or full date (e.g., 1990-05-15)
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">
@@ -507,11 +519,15 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                             Date of Death (optional)
                                         </label>
                                         <input
-                                            type="date"
+                                            type="text"
                                             value={formData.dateOfDeath}
                                             onChange={(e) => handleInputChange("dateOfDeath", e.target.value)}
+                                            placeholder="YYYY or YYYY-MM-DD"
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                         />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Enter year only (e.g., 2020) or full date (e.g., 2020-12-31)
+                                        </p>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">
