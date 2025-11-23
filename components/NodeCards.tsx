@@ -8,6 +8,7 @@ interface PersonCardProps {
     placeOfBirth?: string;
     placeOfDeath?: string;
     gender: "male" | "female";
+    photoCount?: number;
 }
 
 const genderColors = {
@@ -29,6 +30,7 @@ export const PersonCard: React.FC<PersonCardProps> = ({
     placeOfBirth,
     placeOfDeath,
     gender,
+    photoCount = 0,
 }) => {
     const colors = genderColors[gender];
 
@@ -46,8 +48,33 @@ export const PersonCard: React.FC<PersonCardProps> = ({
                 fontFamily: "Arial, sans-serif",
                 padding: "6px",
                 boxSizing: "border-box",
+                position: "relative",
             }}
         >
+            {photoCount > 0 && (
+                <div
+                    style={{
+                        position: "absolute",
+                        top: "-8px",
+                        right: "-8px",
+                        backgroundColor: "#FF9800",
+                        color: "white",
+                        borderRadius: "50%",
+                        width: "28px",
+                        height: "28px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "11px",
+                        fontWeight: "bold",
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+                        border: "2px solid white",
+                    }}
+                    title={`${photoCount} photo${photoCount !== 1 ? "s" : ""}`}
+                >
+                    📷 {photoCount}
+                </div>
+            )}
             <div
                 style={{
                     textAlign: "center",

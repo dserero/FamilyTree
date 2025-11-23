@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Image as ImageIcon } from "lucide-react";
+import PhotoEditDialog, { PhotoUpdates } from "./PhotoEditDialog";
 
 interface Photo {
     id: string;
@@ -16,15 +17,42 @@ interface Photo {
     people: Array<{ id: string; name: string }>;
 }
 
+interface Person {
+    id: string;
+    name: string;
+}
+
 interface Props {
     photos: Photo[];
     loading: boolean;
     onDelete: (photoId: string) => Promise<void>;
+    allPeople: Person[];
+    onUpdate: () => Promise<void>;
 }
 
-export default function PhotoGallery({ photos, loading, onDelete }: Props) {
+export default function PhotoGallery({ photos, loading, onDelete, allPeople, onUpdate }: Props) {
     const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+    const handleEditPhoto = async (photoId: string, updates: PhotoUpdates) => {
+        const response = await fetch("/api/photos", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                photoId,
+                ...updates,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to update photo");
+        }
+
+        // Refresh the photo list
+        await onUpdate();
+    };
     return (
         <Card
             className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm animate-slide-up"
@@ -83,22 +111,36 @@ export default function PhotoGallery({ photos, loading, onDelete }: Props) {
                                         }}
                                         onLoad={() => console.log("Image loaded:", photo.url)}
                                     />
-                                    <button
-                                        onClick={async () => {
-                                            if (confirm("Delete this photo?")) {
-                                                try {
-                                                    await onDelete(photo.id);
-                                                } catch (e) {
-                                                    console.error(e);
-                                                    alert("Failed to delete photo");
+                                    <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setEditingPhoto(photo);
+                                                setIsEditDialogOpen(true);
+                                            }}
+                                            className="bg-blue-500 text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
+                                            title="Edit photo"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                if (confirm("Delete this photo?")) {
+                                                    try {
+                                                        await onDelete(photo.id);
+                                                    } catch (e) {
+                                                        console.error(e);
+                                                        alert("Failed to delete photo");
+                                                    }
                                                 }
-                                            }
-                                        }}
-                                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                        title="Delete photo"
-                                    >
-                                        🗑️
-                                    </button>
+                                            }}
+                                            className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                                            title="Delete photo"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="p-4 space-y-2">
                                     {photo.caption && (
@@ -183,6 +225,18 @@ export default function PhotoGallery({ photos, loading, onDelete }: Props) {
                     )}
                 </DialogContent>
             </Dialog>
+
+            {/* Edit Photo Dialog */}
+            <PhotoEditDialog
+                photo={editingPhoto}
+                isOpen={isEditDialogOpen}
+                onClose={() => {
+                    setIsEditDialogOpen(false);
+                    setEditingPhoto(null);
+                }}
+                onSave={handleEditPhoto}
+                allPeople={allPeople}
+            />
         </Card>
     );
 }

@@ -5,14 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 
 interface Props {
-    selectedFile: File | null;
-    previewUrl: string;
+    selectedFiles: File[];
+    previewUrls: string[];
     caption: string;
     location: string;
     dateTaken: string;
     comments: string;
     uploading: boolean;
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    onRemoveFile: (index: number) => void;
     onChangeCaption: (v: string) => void;
     onChangeLocation: (v: string) => void;
     onChangeDateTaken: (v: string) => void;
@@ -21,14 +22,15 @@ interface Props {
 }
 
 export default function UploadForm({
-    selectedFile,
-    previewUrl,
+    selectedFiles,
+    previewUrls,
     caption,
     location,
     dateTaken,
     comments,
     uploading,
     onFileChange,
+    onRemoveFile,
     onChangeCaption,
     onChangeLocation,
     onChangeDateTaken,
@@ -47,19 +49,46 @@ export default function UploadForm({
             <CardContent>
                 <form onSubmit={onSubmit} className="space-y-5">
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Photo *</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Photos *</label>
                         <input
                             type="file"
                             accept="image/*"
+                            multiple
                             onChange={onFileChange}
                             className="block w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-5 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-pink-50 file:to-orange-50 file:text-pink-700 hover:file:from-pink-100 hover:file:to-orange-100 transition-all cursor-pointer"
                             required
                         />
+                        {selectedFiles.length > 0 && (
+                            <p className="text-xs text-gray-600 mt-2">
+                                {selectedFiles.length} {selectedFiles.length === 1 ? "photo" : "photos"} selected
+                            </p>
+                        )}
                     </div>
 
-                    {previewUrl && (
-                        <div className="relative w-full h-64 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden shadow-lg border-2 border-gray-200 animate-fade-in">
-                            <img src={previewUrl} alt="Preview" className="w-full h-full object-contain" />
+                    {previewUrls.length > 0 && (
+                        <div className="space-y-3">
+                            <label className="block text-sm font-semibold text-gray-700">Previews</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                {previewUrls.map((url, index) => (
+                                    <div key={index} className="relative group">
+                                        <div className="relative w-full h-48 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl overflow-hidden shadow-lg border-2 border-gray-200">
+                                            <img
+                                                src={url}
+                                                alt={`Preview ${index + 1}`}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveFile(index)}
+                                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            title="Remove photo"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -108,7 +137,7 @@ export default function UploadForm({
 
                     <button
                         type="submit"
-                        disabled={uploading || !selectedFile}
+                        disabled={uploading || selectedFiles.length === 0}
                         className="w-full bg-gradient-to-r from-pink-600 to-orange-600 text-white py-4 px-6 rounded-xl hover:from-pink-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all duration-200 active:scale-98"
                     >
                         {uploading ? (
@@ -117,7 +146,11 @@ export default function UploadForm({
                                 Uploading...
                             </span>
                         ) : (
-                            "Upload Photo"
+                            `Upload ${
+                                selectedFiles.length > 0
+                                    ? `${selectedFiles.length} ${selectedFiles.length === 1 ? "Photo" : "Photos"}`
+                                    : "Photos"
+                            }`
                         )}
                     </button>
                 </form>

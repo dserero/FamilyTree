@@ -24,10 +24,19 @@ export default function Home() {
                             <span>Complete Your Tree</span>
                         </span>
                     </Link>
+                    <Link
+                        href="/photos"
+                        className="group px-8 py-4 bg-pink-600 text-white text-xl font-semibold rounded-lg shadow-lg hover:bg-pink-700 transition-all duration-200 hover:shadow-xl hover:scale-105"
+                    >
+                        <span className="flex items-center gap-2">
+                            <span>📸</span>
+                            <span>Upload Photos</span>
+                        </span>
+                    </Link>
                 </div>
                 <p className="text-gray-600 mt-8 max-w-2xl mx-auto">
-                    View your interactive family tree or help fill in missing information about your relatives through
-                    our guided wizard.
+                    View your interactive family tree, complete missing information about your relatives, or upload and
+                    manage family photos to preserve your memories.
                 </p>
             </div>
         </main>

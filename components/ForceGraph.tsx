@@ -322,6 +322,7 @@ const ForceGraph = () => {
                             placeOfBirth={person.placeOfBirth}
                             placeOfDeath={person.placeOfDeath}
                             gender={person.gender}
+                            photoCount={person.photoCount}
                         />
                     );
                 }
@@ -417,6 +418,7 @@ const ForceGraph = () => {
             nodeToUpdate.placeOfBirth = updatedNode.placeOfBirth;
             nodeToUpdate.placeOfDeath = updatedNode.placeOfDeath;
             nodeToUpdate.gender = updatedNode.gender;
+            nodeToUpdate.photoCount = updatedNode.photoCount;
 
             // Update the visual representation directly in the DOM
             const svg = d3.select(svgRef.current);
@@ -433,6 +435,7 @@ const ForceGraph = () => {
                             placeOfBirth={updatedNode.placeOfBirth}
                             placeOfDeath={updatedNode.placeOfDeath}
                             gender={updatedNode.gender}
+                            photoCount={updatedNode.photoCount}
                         />
                     );
                 });

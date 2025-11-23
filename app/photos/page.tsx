@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from "react";
-// Note: layout uses componentized UploadForm, PeopleTagger and PhotoGallery
-import UploadForm from "@/components/Photos/UploadForm";
-import PeopleTagger from "@/components/Photos/PeopleTagger";
+import UploadPhotoModal from "@/components/Photos/UploadPhotoModal";
 import PhotoGallery from "@/components/Photos/PhotoGallery";
 
 interface Person {
@@ -27,10 +25,11 @@ export default function PhotosPage() {
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
     // Form state
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string>("");
+    const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+    const [previewUrls, setPreviewUrls] = useState<string[]>([]);
     const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
     const [caption, setCaption] = useState("");
     const [location, setLocation] = useState("");
@@ -71,16 +70,31 @@ export default function PhotosPage() {
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            setSelectedFile(file);
-            // Create preview
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result as string);
-            };
-            reader.readAsDataURL(file);
+        const files = e.target.files;
+        if (files && files.length > 0) {
+            const filesArray = Array.from(files);
+            setSelectedFiles(filesArray);
+
+            // Create previews for all files
+            const previewPromises = filesArray.map((file) => {
+                return new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        resolve(reader.result as string);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+
+            Promise.all(previewPromises).then((urls) => {
+                setPreviewUrls(urls);
+            });
         }
+    };
+
+    const handleRemoveFile = (index: number) => {
+        setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+        setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
     };
 
     const handlePersonToggle = (personId: string) => {
@@ -92,36 +106,49 @@ export default function PhotosPage() {
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
-        if (!selectedFile) {
-            alert("Please select a file to upload");
+        if (selectedFiles.length === 0) {
+            alert("Please select at least one file to upload");
             return;
         }
 
         setUploading(true);
 
         try {
-            const formData = new FormData();
-            formData.append("file", selectedFile);
-            formData.append("personIds", selectedPeople.join(","));
-            formData.append("caption", caption);
-            formData.append("location", location);
-            formData.append("dateTaken", dateTaken);
-            formData.append("comments", comments);
+            // Upload files one by one
+            let successCount = 0;
+            let failCount = 0;
 
-            const response = await fetch("/api/photos", {
-                method: "POST",
-                body: formData,
-            });
+            for (const file of selectedFiles) {
+                try {
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    formData.append("personIds", selectedPeople.join(","));
+                    formData.append("caption", caption);
+                    formData.append("location", location);
+                    formData.append("dateTaken", dateTaken);
+                    formData.append("comments", comments);
 
-            if (!response.ok) {
-                const error = await response.json();
-                console.error("Server error:", error);
-                throw new Error(error.details || error.error || "Upload failed");
+                    const response = await fetch("/api/photos", {
+                        method: "POST",
+                        body: formData,
+                    });
+
+                    if (!response.ok) {
+                        const error = await response.json();
+                        console.error("Server error:", error);
+                        throw new Error(error.details || error.error || "Upload failed");
+                    }
+
+                    successCount++;
+                } catch (error) {
+                    console.error(`Error uploading ${file.name}:`, error);
+                    failCount++;
+                }
             }
 
             // Reset form
-            setSelectedFile(null);
-            setPreviewUrl("");
+            setSelectedFiles([]);
+            setPreviewUrls([]);
             setSelectedPeople([]);
             setCaption("");
             setLocation("");
@@ -131,11 +158,22 @@ export default function PhotosPage() {
             // Refresh photos
             await fetchPhotos();
 
-            alert("Photo uploaded successfully!");
+            // Close modal and show result
+            setIsUploadModalOpen(false);
+
+            if (failCount === 0) {
+                alert(`${successCount} ${successCount === 1 ? "photo" : "photos"} uploaded successfully!`);
+            } else {
+                alert(
+                    `${successCount} ${
+                        successCount === 1 ? "photo" : "photos"
+                    } uploaded successfully. ${failCount} failed.`
+                );
+            }
         } catch (error) {
-            console.error("Error uploading photo:", error);
+            console.error("Error uploading photos:", error);
             const errorMessage = error instanceof Error ? error.message : "Unknown error";
-            alert(`Failed to upload photo: ${errorMessage}`);
+            alert(`Failed to upload photos: ${errorMessage}`);
         } finally {
             setUploading(false);
         }
@@ -162,25 +200,7 @@ export default function PhotosPage() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 animate-slide-up">
-                    <UploadForm
-                        selectedFile={selectedFile}
-                        previewUrl={previewUrl}
-                        caption={caption}
-                        location={location}
-                        dateTaken={dateTaken}
-                        comments={comments}
-                        uploading={uploading}
-                        onFileChange={handleFileChange}
-                        onChangeCaption={setCaption}
-                        onChangeLocation={setLocation}
-                        onChangeDateTaken={setDateTaken}
-                        onChangeComments={setComments}
-                        onSubmit={handleSubmit}
-                    />
-
-                    <PeopleTagger people={people} selectedPeople={selectedPeople} onToggle={handlePersonToggle} />
-                </div>
+                {/* Photo Gallery */}
                 <PhotoGallery
                     photos={photos}
                     loading={loading}
@@ -188,6 +208,40 @@ export default function PhotosPage() {
                         const resp = await fetch(`/api/photos?id=${id}`, { method: "DELETE" });
                         if (resp.ok) await fetchPhotos();
                     }}
+                    allPeople={people}
+                    onUpdate={fetchPhotos}
+                />
+
+                {/* Floating Add Button */}
+                <button
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-r from-pink-500 to-orange-500 text-white rounded-full shadow-2xl hover:shadow-pink-500/50 hover:scale-110 transition-all duration-200 flex items-center justify-center text-3xl z-50 group"
+                    title="Upload photos"
+                >
+                    <span className="group-hover:rotate-90 transition-transform duration-200">+</span>
+                </button>
+
+                {/* Upload Modal */}
+                <UploadPhotoModal
+                    isOpen={isUploadModalOpen}
+                    onClose={() => setIsUploadModalOpen(false)}
+                    people={people}
+                    selectedFiles={selectedFiles}
+                    previewUrls={previewUrls}
+                    selectedPeople={selectedPeople}
+                    caption={caption}
+                    location={location}
+                    dateTaken={dateTaken}
+                    comments={comments}
+                    uploading={uploading}
+                    onFileChange={handleFileChange}
+                    onRemoveFile={handleRemoveFile}
+                    onPersonToggle={handlePersonToggle}
+                    onChangeCaption={setCaption}
+                    onChangeLocation={setLocation}
+                    onChangeDateTaken={setDateTaken}
+                    onChangeComments={setComments}
+                    onSubmit={handleSubmit}
                 />
             </div>
         </main>

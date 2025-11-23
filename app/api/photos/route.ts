@@ -81,6 +81,54 @@ export async function GET() {
     }
 }
 
+export async function PUT(request: NextRequest) {
+    try {
+        const body = await request.json();
+        const { photoId, caption, location, dateTaken, comments, personIds } = body;
+
+        if (!photoId) {
+            return NextResponse.json({ error: "Photo ID is required" }, { status: 400 });
+        }
+
+        const { updatePhoto, linkPhotoToPerson, getSession } = await import("@/lib/neo4j");
+
+        // Update photo metadata
+        await updatePhoto(photoId, {
+            caption: caption || "",
+            location: location || "",
+            dateTaken: dateTaken || "",
+            comments: comments || "",
+        });
+
+        // Update person tags - remove all existing tags and add new ones
+        const session = getSession();
+        try {
+            // Remove all existing APPEARS_IN relationships
+            await session.run(
+                `MATCH (person:Person)-[r:APPEARS_IN]->(photo:Photo {id: $photoId})
+                 DELETE r`,
+                { photoId }
+            );
+
+            // Add new relationships
+            if (personIds && Array.isArray(personIds)) {
+                for (const personId of personIds) {
+                    if (personId) {
+                        await linkPhotoToPerson(photoId, personId);
+                    }
+                }
+            }
+        } finally {
+            await session.close();
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Error updating photo:", error);
+        return NextResponse.json({ error: "Failed to update photo" }, { status: 500 });
+    }
+}
+
 export async function DELETE(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);

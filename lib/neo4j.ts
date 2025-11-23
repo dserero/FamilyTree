@@ -33,10 +33,11 @@ export const getFamilyTreeData = async () => {
     const session = getSession();
 
     try {
-        // Query to get all Person nodes
+        // Query to get all Person nodes with photo counts
         const personResult = await session.run(`
             MATCH (p:Person)
-            RETURN p
+            OPTIONAL MATCH (p)-[:APPEARS_IN]->(photo:Photo)
+            RETURN p, count(photo) as photoCount
         `);
 
         // Query to get all Couple nodes
@@ -60,6 +61,7 @@ export const getFamilyTreeData = async () => {
         // Process Person nodes - database has 'id' and 'name' properties
         const persons = personResult.records.map((record) => {
             const person = record.get("p").properties;
+            const photoCount = record.get("photoCount").toNumber();
             return {
                 id: person.id, // UUID string
                 nodeType: "person" as const,
@@ -72,6 +74,7 @@ export const getFamilyTreeData = async () => {
                 placeOfBirth: person.placeOfBirth || undefined,
                 placeOfDeath: person.placeOfDeath || undefined,
                 gender: person.gender || "male",
+                photoCount: photoCount,
             };
         });
 
