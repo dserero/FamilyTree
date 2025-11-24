@@ -710,7 +710,7 @@ const ForceGraph = () => {
         // Update the visual representation of this specific node
         const svg = d3.select(svgRef.current);
         const nodeGroup = svg.select(`#node-${updatedNode.id}`);
-        
+
         if (nodeGroup.empty()) {
             setSelectedNode(null);
             return;
@@ -731,24 +731,22 @@ const ForceGraph = () => {
         }
 
         // Update the background rectangles
-        nodeGroup.select("rect:nth-of-type(1)")
-            .attr("height", newHeight);
+        nodeGroup.select("rect:nth-of-type(1)").attr("height", newHeight);
 
         // Update the name (first text element in header)
-        nodeGroup.select("text")
-            .text(updatedNode.name);
+        nodeGroup.select("text").text(updatedNode.name);
 
         // Remove only the detail text elements (not button text or name)
         // Detail text has y positions between headerHeight + basePadding and the button area
         const detailStartY = headerHeight + basePadding;
         const detailEndY = newHeight - buttonSectionHeight;
-        
-        nodeGroup.selectAll("text")
-            .filter(function(this: any) {
+
+        nodeGroup
+            .selectAll("text")
+            .filter(function (this: any) {
                 const y = parseFloat(d3.select(this).attr("y"));
                 // Remove text that's in the detail area but not button text
-                return y >= detailStartY && y < detailEndY && 
-                       !d3.select(this).classed("button-text");
+                return y >= detailStartY && y < detailEndY && !d3.select(this).classed("button-text");
             })
             .remove();
 
@@ -785,18 +783,14 @@ const ForceGraph = () => {
         // Update button positions
         const buttonY = newHeight - 36;
         const buttonHeight = 28;
-        
+
         // Update edit button
-        nodeGroup.select(".edit-button rect")
-            .attr("y", buttonY);
-        nodeGroup.select(".edit-button text")
-            .attr("y", buttonY + buttonHeight / 2 + 5);
-        
+        nodeGroup.select(".edit-button rect").attr("y", buttonY);
+        nodeGroup.select(".edit-button text").attr("y", buttonY + buttonHeight / 2 + 5);
+
         // Update add button
-        nodeGroup.select(".add-button rect")
-            .attr("y", buttonY);
-        nodeGroup.select(".add-button text")
-            .attr("y", buttonY + buttonHeight / 2 + 5);
+        nodeGroup.select(".add-button rect").attr("y", buttonY);
+        nodeGroup.select(".add-button text").attr("y", buttonY + buttonHeight / 2 + 5);
 
         setSelectedNode(null);
     };

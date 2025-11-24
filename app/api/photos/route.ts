@@ -20,6 +20,15 @@ export async function POST(request: NextRequest) {
         const dateTaken = formData.get("dateTaken") as string;
         const comments = formData.get("comments") as string;
 
+        console.log("FormData received:", {
+            hasFile: !!file,
+            personIds,
+            caption,
+            location,
+            dateTaken,
+            comments,
+        });
+
         if (!file) {
             return NextResponse.json({ error: "No file provided" }, { status: 400 });
         }
@@ -36,6 +45,7 @@ export async function POST(request: NextRequest) {
         console.log("B2 upload successful:", photoUrl);
 
         // Create photo node in Neo4j
+        console.log("Creating photo in Neo4j...");
         const photo = await createPhoto({
             url: photoUrl,
             caption: caption || undefined,
@@ -43,6 +53,7 @@ export async function POST(request: NextRequest) {
             dateTaken: dateTaken || undefined,
             comments: comments || undefined,
         });
+        console.log("Photo created in Neo4j:", photo);
 
         // Link photo to people
         if (personIds) {
@@ -50,9 +61,13 @@ export async function POST(request: NextRequest) {
                 .split(",")
                 .map((id) => id.trim())
                 .filter(Boolean);
+            console.log("Linking photo to persons:", ids);
             for (const personId of ids) {
                 await linkPhotoToPerson(photo.id, personId);
+                console.log(`Linked photo ${photo.id} to person ${personId}`);
             }
+        } else {
+            console.warn("No personIds provided - photo created but not linked to any person");
         }
 
         return NextResponse.json({
