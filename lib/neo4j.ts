@@ -712,19 +712,23 @@ export async function getPhotosForPerson(personId: string): Promise<
         dateTaken?: string;
         comments?: string;
         uploadedAt: string;
+        people: Array<{ id: string; name: string }>;
     }>
 > {
     const session = getSession();
     try {
         const result = await session.run(
             `MATCH (person:Person {id: $personId})-[:APPEARS_IN]->(photo:Photo)
-             RETURN photo
+             OPTIONAL MATCH (p:Person)-[:APPEARS_IN]->(photo)
+             WITH photo, collect({id: p.id, name: p.name}) as people
+             RETURN photo, people
              ORDER BY photo.uploadedAt DESC`,
             { personId }
         );
 
         return result.records.map((record) => {
             const photo = record.get("photo").properties;
+            const people = record.get("people").filter((p: any) => p.id !== null);
             return {
                 id: photo.id,
                 url: photo.url,
@@ -733,6 +737,7 @@ export async function getPhotosForPerson(personId: string): Promise<
                 dateTaken: photo.dateTaken,
                 comments: photo.comments,
                 uploadedAt: photo.uploadedAt,
+                people: people,
             };
         });
     } finally {

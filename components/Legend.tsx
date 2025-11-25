@@ -13,7 +13,7 @@ export const Legend: React.FC = () => {
                 boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 fontFamily: "Arial, sans-serif",
                 fontSize: "14px",
-                zIndex: 1000,
+                zIndex: 10,
             }}
         >
             <div style={{ fontWeight: "bold", marginBottom: "10px", fontSize: "16px" }}>Legend</div>

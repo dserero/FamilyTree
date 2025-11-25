@@ -11,6 +11,15 @@ interface Photo {
     dateTaken?: string;
     comments?: string;
     uploadedAt: string;
+    people?: Array<{ id: string; name: string }>;
+}
+
+export interface PhotoUpdates {
+    caption: string;
+    location: string;
+    dateTaken: string;
+    comments: string;
+    personIds: string[];
 }
 
 export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode: PersonNode) => void) {
@@ -130,6 +139,69 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
         setSelectedPhotoIndex(index);
     };
 
+    const updatePhoto = async (photoId: string, updates: PhotoUpdates) => {
+        try {
+            const response = await fetch("/api/photos", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    photoId,
+                    ...updates,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to update photo");
+            }
+
+            // Refresh the photo list
+            await fetchPhotos();
+
+            // If the currently selected photo was updated, refresh it
+            if (selectedPhoto && selectedPhoto.id === photoId) {
+                const updatedPhoto = photos.find((p) => p.id === photoId);
+                if (updatedPhoto) {
+                    setSelectedPhoto(updatedPhoto);
+                }
+            }
+        } catch (err) {
+            console.error("Error updating photo:", err);
+            throw err;
+        }
+    };
+
+    const deletePhoto = async (photoId: string) => {
+        if (!node || node.nodeType !== "person") return;
+
+        try {
+            const response = await fetch(`/api/photos?photoId=${photoId}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to delete photo");
+            }
+
+            // Refresh the photo list
+            await fetchPhotos();
+
+            // Update photo count in the node
+            const updatedNode: PersonNode = {
+                ...node,
+                photoCount: Math.max(0, (node.photoCount || 0) - 1),
+            };
+            onUpdate(updatedNode);
+
+            // If the deleted photo was currently being viewed, close the viewer
+            if (selectedPhoto && selectedPhoto.id === photoId) {
+                closePhotoViewer();
+            }
+        } catch (err) {
+            console.error("Error deleting photo:", err);
+            throw err;
+        }
+    };
+
     return {
         photos,
         loadingPhotos,
@@ -143,5 +215,7 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
         goToPreviousPhoto,
         closePhotoViewer,
         selectPhoto,
+        updatePhoto,
+        deletePhoto,
     };
 }

@@ -89,7 +89,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({ nodes, onSelectNode }) => 
                 top: "20px",
                 left: "50%",
                 transform: "translateX(-50%)",
-                zIndex: 1000,
+                zIndex: 10,
                 width: "90%",
                 maxWidth: "400px",
             }}

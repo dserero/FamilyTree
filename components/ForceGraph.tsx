@@ -213,8 +213,8 @@ const ForceGraph = () => {
             .filter((year: number) => !isNaN(year));
 
         const hasValidDates = validBirthYears.length > 0;
-        const minYear = hasValidDates ? Math.min(...validBirthYears) : 1350;
-        const maxYear = hasValidDates ? Math.max(...validBirthYears) : 2500;
+        const minYear = hasValidDates ? Math.min(...validBirthYears) : 1900;
+        const maxYear = hasValidDates ? Math.max(...validBirthYears) : 2000;
 
         console.log("Birth year range:", { minYear, maxYear, hasValidDates, validBirthYears });
 
@@ -254,7 +254,7 @@ const ForceGraph = () => {
                             return height / 2;
                         }
                     })
-                    .strength(hasValidDates ? 3 : 0.3) // Weaker Y force when no dates available
+                    .strength(hasValidDates ? 4 : 0.3) // Weaker Y force when no dates available
             );
 
         // Create links
@@ -936,6 +936,7 @@ const ForceGraph = () => {
                     onUpdate={handleUpdateNode}
                     onRefresh={fetchData}
                     initialAction={initialAction}
+                    onSelectNode={setSelectedNode}
                 />
             )}
             {showRelationDialog && (

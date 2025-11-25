@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { PersonNode, CoupleNode } from "@/types/graph";
+import { PersonNode, CoupleNode, Node } from "@/types/graph";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { User, Calendar, Image as ImageIcon, X, Edit2, Trash2, Plus } from "lucide-react";
 import { PhotoViewer } from "./PersonCard/PhotoViewer";
@@ -17,15 +17,24 @@ interface EditableNodeCardProps {
     onUpdate: (updatedNode: PersonNode) => void;
     onRefresh?: () => void;
     initialAction?: "parent" | "child" | null;
+    onSelectNode?: (node: Node) => void;
 }
 
-export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAction }: EditableNodeCardProps) {
+export function EditableNodeCard({
+    node,
+    onClose,
+    onUpdate,
+    onRefresh,
+    initialAction,
+    onSelectNode,
+}: EditableNodeCardProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showRelationDialog, setShowRelationDialog] = useState(false);
     const [showPhotos, setShowPhotos] = useState(false);
+    const [allPeople, setAllPeople] = useState<Array<{ id: string; name: string }>>([]);
 
     const photoManager = usePhotoManager(node.nodeType === "person" ? node : null, onUpdate);
 
@@ -65,8 +74,26 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
     useEffect(() => {
         if (showPhotos && node.nodeType === "person") {
             photoManager.fetchPhotos();
+            fetchAllPeople();
         }
     }, [showPhotos, node.nodeType]);
+
+    const fetchAllPeople = async () => {
+        try {
+            const response = await fetch("/api/family-tree");
+            if (!response.ok) throw new Error("Failed to fetch people");
+            const data = await response.json();
+            const people = data.nodes
+                .filter((n: any) => n.nodeType === "person")
+                .map((n: any) => ({
+                    id: n.id,
+                    name: `${n.firstName} ${n.lastName}`,
+                }));
+            setAllPeople(people);
+        } catch (err) {
+            console.error("Error fetching people:", err);
+        }
+    };
 
     const handleInputChange = (field: keyof typeof formData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
@@ -207,10 +234,10 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
                 <div onClick={(e) => e.stopPropagation()}>
-                    <Card className="w-[450px] bg-white">
+                    <Card className="w-[500px] bg-white">
                         <CardHeader>
                             <CardTitle>Couple Node</CardTitle>
-                            <CardDescription>ID: {node.id}</CardDescription>
+                            <CardDescription>Manage this family relationship</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             {error && (
@@ -218,23 +245,136 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                                     {error}
                                 </div>
                             )}
-                            <div className="space-y-2">
-                                <p className="text-sm text-muted-foreground">
-                                    This is a couple relationship node connecting two partners.
+                            <div className="space-y-3">
+                                <p className="text-sm text-gray-700 mb-4">
+                                    This is a couple relationship node connecting two partners. You can add a new
+                                    partner or child to this family:
                                 </p>
+                                <button
+                                    onClick={async () => {
+                                        setIsSaving(true);
+                                        setError(null);
+                                        try {
+                                            const response = await fetch("/api/couple/link", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ coupleId: node.id, role: "partner" }),
+                                            });
+                                            if (response.ok) {
+                                                const result = await response.json();
+                                                if (onRefresh) await onRefresh();
+                                                // Fetch the newly created person and open edit dialog
+                                                const treeResponse = await fetch("/api/family-tree");
+                                                if (treeResponse.ok) {
+                                                    const treeData = await treeResponse.json();
+                                                    const newPerson = treeData.nodes.find(
+                                                        (n: any) => n.id === result.personId
+                                                    );
+                                                    if (newPerson && onSelectNode) {
+                                                        onClose();
+                                                        // Use setTimeout to ensure the close animation completes
+                                                        setTimeout(() => onSelectNode(newPerson), 100);
+                                                    } else {
+                                                        onClose();
+                                                    }
+                                                } else {
+                                                    onClose();
+                                                }
+                                            } else {
+                                                const errorData = await response.json();
+                                                throw new Error(errorData.error || "Failed to create partner");
+                                            }
+                                        } catch (err) {
+                                            console.error("Error creating partner:", err);
+                                            setError(err instanceof Error ? err.message : "Failed to create partner");
+                                        } finally {
+                                            setIsSaving(false);
+                                        }
+                                    }}
+                                    disabled={isSaving}
+                                    className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="text-2xl">➕</div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-base mb-1">
+                                                {isSaving ? "Creating..." : "Add Partner"}
+                                            </div>
+                                            <div className="text-sm opacity-90">
+                                                Add another partner to this family unit (e.g., for remarriages or
+                                                polyamorous families)
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={async () => {
+                                        setIsSaving(true);
+                                        setError(null);
+                                        try {
+                                            const response = await fetch("/api/couple/link", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({ coupleId: node.id, role: "child" }),
+                                            });
+                                            if (response.ok) {
+                                                const result = await response.json();
+                                                if (onRefresh) await onRefresh();
+                                                // Fetch the newly created person and open edit dialog
+                                                const treeResponse = await fetch("/api/family-tree");
+                                                if (treeResponse.ok) {
+                                                    const treeData = await treeResponse.json();
+                                                    const newPerson = treeData.nodes.find(
+                                                        (n: any) => n.id === result.personId
+                                                    );
+                                                    if (newPerson && onSelectNode) {
+                                                        onClose();
+                                                        // Use setTimeout to ensure the close animation completes
+                                                        setTimeout(() => onSelectNode(newPerson), 100);
+                                                    } else {
+                                                        onClose();
+                                                    }
+                                                } else {
+                                                    onClose();
+                                                }
+                                            } else {
+                                                const errorData = await response.json();
+                                                throw new Error(errorData.error || "Failed to create child");
+                                            }
+                                        } catch (err) {
+                                            console.error("Error creating child:", err);
+                                            setError(err instanceof Error ? err.message : "Failed to create child");
+                                        } finally {
+                                            setIsSaving(false);
+                                        }
+                                    }}
+                                    disabled={isSaving}
+                                    className="w-full px-5 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <div className="flex items-start gap-3">
+                                        <div className="text-2xl">👶</div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-base mb-1">
+                                                {isSaving ? "Creating..." : "Add Child"}
+                                            </div>
+                                            <div className="text-sm opacity-90">Add a new child to this couple</div>
+                                        </div>
+                                    </div>
+                                </button>
                             </div>
                         </CardContent>
                         <CardFooter className="flex gap-2">
                             <button
                                 onClick={handleDelete}
-                                disabled={isDeleting}
-                                className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm"
+                                disabled={isDeleting || isSaving}
+                                className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isDeleting ? "Deleting..." : "Delete"}
+                                {isDeleting ? "Deleting..." : "Delete Couple"}
                             </button>
                             <button
                                 onClick={onClose}
-                                className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm"
+                                disabled={isSaving}
+                                className="flex-1 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Close
                             </button>
@@ -261,6 +401,20 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                         onClose={photoManager.closePhotoViewer}
                         onNext={photoManager.goToNextPhoto}
                         onPrevious={photoManager.goToPreviousPhoto}
+                        showActions={true}
+                        onEdit={() => {
+                            // Close photo viewer and switch to gallery view to edit
+                            photoManager.closePhotoViewer();
+                            setShowPhotos(true);
+                        }}
+                        onDelete={async () => {
+                            try {
+                                await photoManager.deletePhoto(photoManager.selectedPhoto!.id);
+                            } catch (e) {
+                                console.error(e);
+                                alert("Failed to delete photo");
+                            }
+                        }}
                     />
                 )}
 
@@ -281,6 +435,9 @@ export function EditableNodeCard({ node, onClose, onUpdate, onRefresh, initialAc
                         uploadError={photoManager.uploadError}
                         onPhotoClick={photoManager.selectPhoto}
                         onPhotoUpload={photoManager.handlePhotoUpload}
+                        onPhotoUpdate={photoManager.updatePhoto}
+                        onPhotoDelete={photoManager.deletePhoto}
+                        allPeople={allPeople}
                         onClose={() => setShowPhotos(false)}
                     />
                 ) : (
