@@ -64,6 +64,13 @@ export function PersonDisplayView({ node, onShowPhotos, onPhotoUpload, uploading
                 </div>
             )}
 
+            {node.notes && (
+                <div className="py-3 px-4 bg-gradient-to-r from-yellow-50 to-amber-50 rounded-lg border border-yellow-200">
+                    <div className="text-sm font-medium text-gray-700 mb-2">📝 Notes</div>
+                    <p className="text-sm text-gray-800 whitespace-pre-wrap">{node.notes}</p>
+                </div>
+            )}
+
             <div className="space-y-2">
                 {node.photoCount !== undefined && node.photoCount > 0 ? (
                     <>

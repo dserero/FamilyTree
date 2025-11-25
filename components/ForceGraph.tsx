@@ -77,6 +77,10 @@ const getPersonDetailRows = (person: Partial<PersonNode>) => {
         rows.push({ label: "Profession", value: person.profession });
     }
 
+    if (person.notes) {
+        rows.push({ label: "Notes", value: person.notes });
+    }
+
     if (person.dateOfDeath) {
         rows.push({ label: "Date of Death", value: person.dateOfDeath });
         rows.push({
@@ -222,9 +226,9 @@ const ForceGraph = () => {
         // Apply Dagre hierarchical layout for initial positioning
         const positionedNodes = applyDagreLayout(graphData.nodes, graphData.links, {
             rankdir: "TB", // Top to bottom (oldest generation at top)
-            ranksep: 250, // Increased vertical space between generations
-            nodesep: 200, // Increased horizontal space between siblings
-            edgesep: 100, // Space between edges
+            ranksep: 60, // Reduced vertical space between generations
+            nodesep: 60, // Reduced horizontal space between siblings
+            edgesep: 60, // Slightly reduced space between edges
         });
 
         // Update the graph data with positioned nodes
@@ -241,12 +245,12 @@ const ForceGraph = () => {
                 d3
                     .forceLink(graphData.links)
                     .id((d: any) => d.id)
-                    .distance(100)
-                    .strength(0) // Strength 0 to preserve Dagre layout, but keep for link resolution
+                    .distance(60) // Reduced link distance
+                    .strength(0)
             )
-            .force("collision", d3.forceCollide().radius(150)) // Increased collision radius
-            .alpha(0.1) // Low alpha to minimize movement
-            .alphaDecay(0.1); // Fast settling
+            .force("collision", d3.forceCollide().radius(70)) // Reduced collision radius
+            .alpha(0.1)
+            .alphaDecay(0.1);
 
         // Create links
         const link = container
@@ -710,9 +714,9 @@ const ForceGraph = () => {
             // Re-apply dagre layout on resize
             const repositionedNodes = applyDagreLayout(graphData.nodes, graphData.links, {
                 rankdir: "TB",
-                ranksep: 250,
-                nodesep: 200,
-                edgesep: 100,
+                ranksep: 120,
+                nodesep: 90,
+                edgesep: 60,
             });
 
             graphData.nodes = repositionedNodes;

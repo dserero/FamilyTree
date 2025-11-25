@@ -9,6 +9,7 @@ export interface PersonNode {
     placeOfBirth?: string;
     placeOfDeath?: string;
     profession?: string;
+    notes?: string;
     gender: "male" | "female";
     photoCount?: number;
     x?: number;

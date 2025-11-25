@@ -8,6 +8,7 @@ interface PersonFormData {
     placeOfBirth?: string;
     placeOfDeath?: string;
     profession?: string;
+    notes?: string;
     gender: "male" | "female";
 }
 
@@ -73,6 +74,18 @@ export function PersonFormFields({ formData, onChange }: PersonFormFieldsProps) 
                     onChange={(e) => onChange("profession", e.target.value)}
                     placeholder="e.g., Doctor, Teacher, Engineer"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+            </div>
+            <div>
+                <label className="block text-sm font-medium mb-1.5 text-gray-700">
+                    Notes <span className="text-gray-400 font-normal">(optional)</span>
+                </label>
+                <textarea
+                    value={formData.notes}
+                    onChange={(e) => onChange("notes", e.target.value)}
+                    placeholder="Add any additional notes about this person..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
                 />
             </div>
             <div>

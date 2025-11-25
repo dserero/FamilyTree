@@ -46,6 +46,7 @@ export function EditableNodeCard({
         placeOfBirth?: string;
         placeOfDeath?: string;
         profession?: string;
+        notes?: string;
         gender: "male" | "female";
     }>(
         node.nodeType === "person"
@@ -57,6 +58,7 @@ export function EditableNodeCard({
                   placeOfBirth: node.placeOfBirth || "",
                   placeOfDeath: node.placeOfDeath || "",
                   profession: node.profession || "",
+                  notes: node.notes || "",
                   gender: node.gender,
               }
             : {
@@ -67,6 +69,7 @@ export function EditableNodeCard({
                   placeOfBirth: "",
                   placeOfDeath: "",
                   profession: "",
+                  notes: "",
                   gender: "male",
               }
     );
@@ -120,6 +123,7 @@ export function EditableNodeCard({
                     placeOfBirth: formData.placeOfBirth || undefined,
                     placeOfDeath: formData.placeOfDeath || undefined,
                     profession: formData.profession || undefined,
+                    notes: formData.notes || undefined,
                     gender: formData.gender,
                 }),
             });
@@ -139,6 +143,7 @@ export function EditableNodeCard({
                 placeOfBirth: formData.placeOfBirth || undefined,
                 placeOfDeath: formData.placeOfDeath || undefined,
                 profession: formData.profession || undefined,
+                notes: formData.notes || undefined,
                 gender: formData.gender,
             };
 
@@ -162,6 +167,7 @@ export function EditableNodeCard({
                 placeOfBirth: node.placeOfBirth || "",
                 placeOfDeath: node.placeOfDeath || "",
                 profession: node.profession || "",
+                notes: node.notes || "",
                 gender: node.gender,
             });
         }
