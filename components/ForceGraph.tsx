@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { Node, Link, linkColors, PersonNode, CoupleNode } from "@/types/graph";
 import { createArrowMarkers, calculateLinkPosition, getNodeDimensions } from "@/utils/graphUtils";
+import { applyDagreLayout } from "@/utils/dagreLayout";
 import { PersonCard, CoupleNode as CoupleNodeComponent } from "./NodeCards";
 import { Legend } from "./Legend";
 import { EditableNodeCard } from "./EditableNodeCard";
@@ -140,6 +141,24 @@ const ForceGraph = () => {
 
         const graphData = data;
 
+        // Calculate children count for couple nodes
+        const coupleChildrenCounts = new Map<string, number>();
+        graphData.links.forEach((link: any) => {
+            if (link.type === "parent-child") {
+                // Handle both string IDs and object references (in case D3 already processed it)
+                const sourceId = typeof link.source === "object" ? link.source.id : link.source;
+                const count = coupleChildrenCounts.get(sourceId) || 0;
+                coupleChildrenCounts.set(sourceId, count + 1);
+            }
+        });
+
+        // Add children count to couple nodes
+        graphData.nodes.forEach((node: any) => {
+            if (node.nodeType === "couple") {
+                node.childrenCount = coupleChildrenCounts.get(node.id) || 0;
+            }
+        });
+
         // Set up SVG dimensions
         const svg = d3.select(svgRef.current);
         const width = window.innerWidth;
@@ -200,26 +219,21 @@ const ForceGraph = () => {
         // Create arrow markers
         createArrowMarkers(svg);
 
-        // Initialize node positions to avoid NaN
-        graphData.nodes.forEach((node: any) => {
-            if (!node.x) node.x = width / 2 + (Math.random() - 0.5) * 200;
-            if (!node.y) node.y = height / 2 + (Math.random() - 0.5) * 200;
+        // Apply Dagre hierarchical layout for initial positioning
+        const positionedNodes = applyDagreLayout(graphData.nodes, graphData.links, {
+            rankdir: "TB", // Top to bottom (oldest generation at top)
+            ranksep: 250, // Increased vertical space between generations
+            nodesep: 200, // Increased horizontal space between siblings
+            edgesep: 100, // Space between edges
         });
 
-        // Calculate birth year for positioning (only for valid dates)
-        const validBirthYears = graphData.nodes
-            .filter((n: any) => n.nodeType === "person" && n.dateOfBirth && n.dateOfBirth.trim() !== "")
-            .map((n: any) => new Date(n.dateOfBirth).getFullYear())
-            .filter((year: number) => !isNaN(year));
+        // Update the graph data with positioned nodes
+        graphData.nodes = positionedNodes;
 
-        const hasValidDates = validBirthYears.length > 0;
-        const minYear = hasValidDates ? Math.min(...validBirthYears) : 1900;
-        const maxYear = hasValidDates ? Math.max(...validBirthYears) : 2000;
+        console.log("Dagre layout applied:", positionedNodes);
 
-        console.log("Birth year range:", { minYear, maxYear, hasValidDates, validBirthYears });
-
-        // Create force simulation with consistent parameters
-        // D3 zoom will handle visual scaling for different screen sizes
+        // Optional: Create a light force simulation just for fine-tuning and interactivity
+        // This keeps the hierarchical structure but allows slight adjustments
         const simulation = d3
             .forceSimulation(graphData.nodes)
             .force(
@@ -227,35 +241,12 @@ const ForceGraph = () => {
                 d3
                     .forceLink(graphData.links)
                     .id((d: any) => d.id)
-                    .distance(200)
-                    .strength(3)
+                    .distance(100)
+                    .strength(0) // Strength 0 to preserve Dagre layout, but keep for link resolution
             )
-            .force("charge", d3.forceManyBody().strength(-100000))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide().radius(120))
-            .force("x", d3.forceX(width / 2).strength(1))
-            .force(
-                "y",
-                d3
-                    .forceY((d: any) => {
-                        if (d.nodeType === "person") {
-                            // Position based on birth year if available
-                            if (d.dateOfBirth && d.dateOfBirth.trim() !== "") {
-                                const birthYear = new Date(d.dateOfBirth).getFullYear();
-                                if (!isNaN(birthYear) && hasValidDates) {
-                                    const normalizedYear = (birthYear - minYear) / (maxYear - minYear || 1);
-                                    return height * 0.2 + normalizedYear * height * 0.6; // Map to 20%-80% of height
-                                }
-                            }
-                            // Fallback: center position for persons without valid dates
-                            return height / 2;
-                        } else {
-                            // Couple nodes positioned based on their partners' average position
-                            return height / 2;
-                        }
-                    })
-                    .strength(hasValidDates ? 4 : 0.3) // Weaker Y force when no dates available
-            );
+            .force("collision", d3.forceCollide().radius(150)) // Increased collision radius
+            .alpha(0.1) // Low alpha to minimize movement
+            .alphaDecay(0.1); // Fast settling
 
         // Create links
         const link = container
@@ -652,6 +643,41 @@ const ForceGraph = () => {
                 });
         });
 
+        // Children count badge for couple nodes
+        coupleNodes.each(function (d: any) {
+            if (d.childrenCount && d.childrenCount > 0) {
+                const coupleGroup = d3.select(this);
+                const badgeRadius = 11;
+                const badgeX = 20;
+                const badgeY = -20;
+
+                // Badge background
+                coupleGroup
+                    .append("circle")
+                    .attr("cx", badgeX)
+                    .attr("cy", badgeY)
+                    .attr("r", badgeRadius)
+                    .attr("fill", "#8BC34A") // Light green
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 2)
+                    .style("filter", "drop-shadow(0px 2px 3px rgba(0,0,0,0.2))");
+
+                // Child count text
+                coupleGroup
+                    .append("text")
+                    .attr("x", badgeX)
+                    .attr("y", badgeY + 1)
+                    .attr("text-anchor", "middle")
+                    .attr("dominant-baseline", "central")
+                    .style("font-family", "'Inter', 'Segoe UI', system-ui, sans-serif")
+                    .style("font-size", "10px")
+                    .style("font-weight", "700")
+                    .style("fill", "#fff")
+                    .style("pointer-events", "none")
+                    .text(d.childrenCount);
+            }
+        });
+
         // Add click event to nodes
         node.on("click", (event, d: any) => {
             event.stopPropagation();
@@ -681,8 +707,17 @@ const ForceGraph = () => {
 
             svg.attr("width", newWidth).attr("height", newHeight);
 
-            simulation.force("center", d3.forceCenter(newWidth / 2, newHeight / 2));
-            simulation.alpha(0.3).restart();
+            // Re-apply dagre layout on resize
+            const repositionedNodes = applyDagreLayout(graphData.nodes, graphData.links, {
+                rankdir: "TB",
+                ranksep: 250,
+                nodesep: 200,
+                edgesep: 100,
+            });
+
+            graphData.nodes = repositionedNodes;
+            simulation.nodes(repositionedNodes);
+            simulation.alpha(0.1).restart();
         };
 
         window.addEventListener("resize", handleResize);
@@ -691,6 +726,31 @@ const ForceGraph = () => {
             window.removeEventListener("resize", handleResize);
             simulation.stop();
         };
+    }, [data]);
+
+    useEffect(() => {
+        // After rendering the graph, center and zoom out to show the overall structure
+        if (svgRef.current && data && data.nodes && zoomRef.current && data.nodes.length > 0) {
+            // Calculate bounding box of all nodes
+            const xs = data.nodes.map((n: any) => n.x || 0);
+            const ys = data.nodes.map((n: any) => n.y || 0);
+            const minX = Math.min(...xs);
+            const maxX = Math.max(...xs);
+            const minY = Math.min(...ys);
+            const maxY = Math.max(...ys);
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            const svg = d3.select(svgRef.current);
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            // Calculate scale to fit all nodes comfortably
+            const graphWidth = maxX - minX + 400;
+            const graphHeight = maxY - minY + 400;
+            const scale = Math.min(width / graphWidth, height / graphHeight, 0.8); // 0.8 for extra padding
+            const x = width / 2 - centerX * scale;
+            const y = height / 2 - centerY * scale;
+            svg.transition().duration(0).call(zoomRef.current.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+        }
     }, [data]);
 
     const handleCloseCard = () => {
@@ -731,10 +791,47 @@ const ForceGraph = () => {
         }
 
         // Update the background rectangles
-        nodeGroup.select("rect:nth-of-type(1)").attr("height", newHeight);
+        nodeGroup
+            .select("rect:nth-of-type(1)")
+            .attr("height", newHeight)
+            .attr(
+                "fill",
+                updatedNode.gender === "male"
+                    ? "url(#gradient-" + updatedNode.id + ")"
+                    : "url(#gradient-" + updatedNode.id + ")"
+            )
+            .attr("stroke", updatedNode.gender === "male" ? "#64B5F6" : "#F06292");
+
+        // Update the gradient stops for gender
+        const gradient = nodeGroup.select("linearGradient#gradient-" + updatedNode.id);
+        if (!gradient.empty()) {
+            const stops =
+                updatedNode.gender === "male"
+                    ? [
+                          { offset: "0%", color: "#BBDEFB" },
+                          { offset: "100%", color: "#E3F2FD" },
+                      ]
+                    : [
+                          { offset: "0%", color: "#F8BBD0" },
+                          { offset: "100%", color: "#FCE4EC" },
+                      ];
+            gradient
+                .selectAll("stop")
+                .data(stops)
+                .attr("offset", (d: any) => d.offset)
+                .attr("stop-color", (d: any) => d.color);
+        }
+
+        // Update the header rectangle color
+        nodeGroup
+            .select("rect:nth-of-type(2)")
+            .attr("fill", updatedNode.gender === "male" ? "rgba(33, 150, 243, 0.15)" : "rgba(233, 30, 99, 0.15)");
 
         // Update the name (first text element in header)
-        nodeGroup.select("text").text(updatedNode.name);
+        nodeGroup
+            .select("text")
+            .text(updatedNode.name)
+            .style("fill", updatedNode.gender === "male" ? "#1565C0" : "#C2185B");
 
         // Remove only the detail text elements (not button text or name)
         // Detail text has y positions between headerHeight + basePadding and the button area
@@ -785,7 +882,10 @@ const ForceGraph = () => {
         const buttonHeight = 28;
 
         // Update edit button
-        nodeGroup.select(".edit-button rect").attr("y", buttonY);
+        nodeGroup
+            .select(".edit-button rect")
+            .attr("y", buttonY)
+            .attr("fill", updatedNode.gender === "male" ? "#2196F3" : "#E91E63");
         nodeGroup.select(".edit-button text").attr("y", buttonY + buttonHeight / 2 + 5);
 
         // Update add button

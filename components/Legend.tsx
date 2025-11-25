@@ -64,7 +64,7 @@ export const Legend: React.FC = () => {
                             }}
                         ></div>
                     </div>
-                    <span>Parent-Child</span>
+                    <span>Child</span>
                 </div>
             </div>
         </div>
