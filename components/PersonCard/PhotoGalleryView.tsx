@@ -55,10 +55,14 @@ export function PhotoGalleryView({
 
     const handleEditPhoto = async (photoId: string, updates: PhotoUpdates) => {
         if (onPhotoUpdate) {
-            await onPhotoUpdate(photoId, updates);
+            try {
+                await onPhotoUpdate(photoId, updates);
+                // Dialog will close via onClose callback after successful save
+            } catch (error) {
+                // Error handling is done in the parent component
+                console.error("Failed to update photo:", error);
+            }
         }
-        setIsEditDialogOpen(false);
-        setEditingPhoto(null);
     };
 
     const handleDeletePhoto = async (photoId: string) => {

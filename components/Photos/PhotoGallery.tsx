@@ -50,7 +50,7 @@ export default function PhotoGallery({ photos, loading, onDelete, allPeople, onU
             throw new Error("Failed to update photo");
         }
 
-        // Refresh the photo list
+        // Refresh the photo list to show updated tags and counts
         await onUpdate();
     };
 

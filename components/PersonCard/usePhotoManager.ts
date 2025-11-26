@@ -22,7 +22,11 @@ export interface PhotoUpdates {
     personIds: string[];
 }
 
-export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode: PersonNode) => void) {
+export function usePhotoManager(
+    node: PersonNode | null,
+    onUpdate: (updatedNode: PersonNode) => void,
+    onRefresh?: () => void
+) {
     const [photos, setPhotos] = useState<Photo[]>([]);
     const [loadingPhotos, setLoadingPhotos] = useState(false);
     const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -96,6 +100,11 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
             // Refresh photos list
             await fetchPhotos();
 
+            // Trigger a full refresh to update photo counts across all people
+            if (onRefresh) {
+                onRefresh();
+            }
+
             // Update photo count in the node locally
             const updatedNode: PersonNode = {
                 ...node,
@@ -140,6 +149,8 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
     };
 
     const updatePhoto = async (photoId: string, updates: PhotoUpdates) => {
+        if (!node || node.nodeType !== "person") return;
+
         try {
             const response = await fetch("/api/photos", {
                 method: "PUT",
@@ -154,14 +165,34 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
                 throw new Error("Failed to update photo");
             }
 
-            // Refresh the photo list
+            // Refresh the photo list to get updated data
             await fetchPhotos();
+
+            // Trigger a full refresh to update photo counts across all people
+            if (onRefresh) {
+                onRefresh();
+            }
+
+            // Check if this person was removed from the photo
+            const wasRemoved = !updates.personIds.includes(node.id);
+
+            // If the person was removed and the photo count needs updating
+            if (wasRemoved) {
+                const updatedNode: PersonNode = {
+                    ...node,
+                    photoCount: Math.max(0, (node.photoCount || 0) - 1),
+                };
+                onUpdate(updatedNode);
+            }
 
             // If the currently selected photo was updated, refresh it
             if (selectedPhoto && selectedPhoto.id === photoId) {
                 const updatedPhoto = photos.find((p) => p.id === photoId);
                 if (updatedPhoto) {
                     setSelectedPhoto(updatedPhoto);
+                } else if (wasRemoved) {
+                    // Photo was removed from this person, close viewer
+                    closePhotoViewer();
                 }
             }
         } catch (err) {
@@ -184,6 +215,11 @@ export function usePhotoManager(node: PersonNode | null, onUpdate: (updatedNode:
 
             // Refresh the photo list
             await fetchPhotos();
+
+            // Trigger a full refresh to update photo counts across all people
+            if (onRefresh) {
+                onRefresh();
+            }
 
             // Update photo count in the node
             const updatedNode: PersonNode = {

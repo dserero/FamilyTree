@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { PersonNode, Node } from "@/types/graph";
+import Fuse from "fuse.js";
 
 interface SearchBarProps {
     nodes: Node[];
@@ -24,15 +25,15 @@ export const SearchBar: React.FC<SearchBarProps> = ({ nodes, onSelectNode }) => 
         }
 
         const personNodes = nodes.filter((node): node is PersonNode => node.nodeType === "person");
-        const filtered = personNodes.filter((node) => {
-            const fullName = `${node.firstName} ${node.lastName}`.toLowerCase();
-            const searchLower = searchTerm.toLowerCase();
-            return (
-                fullName.includes(searchLower) ||
-                node.firstName.toLowerCase().includes(searchLower) ||
-                node.lastName.toLowerCase().includes(searchLower)
-            );
+
+        const fuse = new Fuse(personNodes, {
+            keys: ["firstName", "lastName"],
+            threshold: 0.4, // 0 = exact match, 1 = match anything
+            ignoreLocation: true,
+            shouldSort: true,
         });
+
+        const filtered = fuse.search(searchTerm).map((result) => result.item);
 
         setSuggestions(filtered);
         setIsOpen(filtered.length > 0);

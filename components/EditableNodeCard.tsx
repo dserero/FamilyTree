@@ -36,7 +36,11 @@ export function EditableNodeCard({
     const [showPhotos, setShowPhotos] = useState(false);
     const [allPeople, setAllPeople] = useState<Array<{ id: string; name: string }>>([]);
 
-    const photoManager = usePhotoManager(node.nodeType === "person" ? node : null, onUpdate);
+    const photoManager = usePhotoManager(
+        node.nodeType === "person" ? node : null,
+        onUpdate,
+        onRefresh // Pass the refresh callback to update photo counts globally
+    );
 
     const [formData, setFormData] = useState<{
         firstName: string;

@@ -71,6 +71,7 @@ export default function PhotoEditDialog({ photo, isOpen, onClose, onSave, allPeo
                 comments,
                 personIds: selectedPeople,
             });
+            // Close dialog after successful save - parent will handle refresh
             onClose();
         } catch (error) {
             console.error("Failed to save photo updates:", error);
@@ -93,7 +94,7 @@ export default function PhotoEditDialog({ photo, isOpen, onClose, onSave, allPeo
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-pink-600 to-orange-600 bg-clip-text text-transparent">
-                        Edit Photo 2
+                        Edit Photo
                     </DialogTitle>
                 </DialogHeader>
 

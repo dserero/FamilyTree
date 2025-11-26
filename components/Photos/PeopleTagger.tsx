@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Fuse from "fuse.js";
 
 interface Person {
     id: string;
@@ -19,7 +20,16 @@ export default function PeopleTagger({ people, selectedPeople, onToggle }: Props
 
     const filteredPeople = useMemo(() => {
         if (!searchQuery.trim()) return people;
-        return people.filter((person) => person.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
+        const fuse = new Fuse(people, {
+            keys: ["name"],
+            threshold: 0.4, // 0 = exact match, 1 = match anything
+            ignoreLocation: true,
+            useExtendedSearch: true,
+            shouldSort: true,
+        });
+
+        return fuse.search(searchQuery).map((result) => result.item);
     }, [people, searchQuery]);
 
     return (
