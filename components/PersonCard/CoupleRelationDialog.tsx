@@ -17,7 +17,7 @@ export function CoupleRelationDialog({
     onCancel,
 }: CoupleRelationDialogProps) {
     return (
-        <Card className="w-[420px] bg-white shadow-2xl border-2">
+        <Card className="w-full max-w-[420px] bg-white shadow-2xl border-2">
             <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
                 <CardTitle className="flex items-center gap-2">
                     <Users className="w-5 h-5" />

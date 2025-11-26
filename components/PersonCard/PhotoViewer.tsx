@@ -92,7 +92,7 @@ export function PhotoViewer({
                 onTouchEnd={onTouchEnd}
             >
                 {/* Top Bar */}
-                <div className="absolute -top-14 left-0 right-0 flex items-center justify-between z-10">
+                <div className="absolute top-4 md:-top-14 left-0 right-0 flex items-center justify-between z-10">
                     {/* Photo Counter */}
                     <div className="text-white bg-black/50 px-4 py-2 rounded-full backdrop-blur-sm font-medium">
                         {photoIndex + 1} / {totalPhotos}

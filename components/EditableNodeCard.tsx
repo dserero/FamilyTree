@@ -238,9 +238,9 @@ export function EditableNodeCard({
     // Render for CoupleNode - simplified since it's less common
     if (node.nodeType === "couple") {
         return (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
                 <div onClick={(e) => e.stopPropagation()}>
-                    <Card className="w-[500px] bg-white">
+                    <Card className="w-full max-w-[500px] bg-white">
                         <CardHeader>
                             <CardTitle>Couple Node</CardTitle>
                             <CardDescription>Manage this family relationship</CardDescription>
@@ -394,7 +394,7 @@ export function EditableNodeCard({
     // Render for PersonNode
     return (
         <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm p-4"
             onClick={onClose}
         >
             <div onClick={(e) => e.stopPropagation()}>
@@ -447,7 +447,7 @@ export function EditableNodeCard({
                         onClose={() => setShowPhotos(false)}
                     />
                 ) : (
-                    <Card className="w-[520px] bg-white shadow-2xl border-2">
+                    <Card className="w-full max-w-[520px] bg-white shadow-2xl border-2 flex flex-col max-h-[90vh]">
                         <CardHeader
                             className={`${
                                 node.gender === "male"
@@ -476,7 +476,10 @@ export function EditableNodeCard({
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-4 pt-6">
+                        <CardContent
+                            className="space-y-4 pt-6 overflow-y-auto px-2"
+                            style={{ maxHeight: "calc(90vh - 120px)" }}
+                        >
                             {error && (
                                 <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
                                     <span className="text-red-600">⚠️</span>
@@ -509,7 +512,7 @@ export function EditableNodeCard({
                                 />
                             )}
                         </CardContent>
-                        <CardFooter className="flex gap-2 border-t bg-gray-50">
+                        <CardFooter className="flex gap-2 border-t bg-gray-50 px-2 py-3 sticky bottom-0 z-10">
                             {isEditing ? (
                                 <>
                                     <button

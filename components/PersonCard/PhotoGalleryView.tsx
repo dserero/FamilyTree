@@ -74,7 +74,7 @@ export function PhotoGalleryView({
 
     return (
         <>
-            <Card className="w-[600px] max-h-[80vh] bg-white shadow-2xl border-2 flex flex-col">
+            <Card className="w-full max-w-[600px] max-h-[80vh] bg-white shadow-2xl border-2 flex flex-col">
                 <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
                     <div className="flex items-center justify-between">
                         <div>
@@ -131,19 +131,19 @@ export function PhotoGalleryView({
                             <p>No photos tagged with this person yet</p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             {photos.map((photo, index) => (
                                 <div
                                     key={photo.id}
-                                    className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all"
+                                    className="relative aspect-square rounded-lg overflow-hidden cursor-pointer group shadow-md hover:shadow-xl transition-all p-1"
                                 >
                                     <img
                                         src={photo.url}
                                         alt={photo.caption || "Photo"}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-lg"
                                         onClick={() => onPhotoClick(photo, index)}
                                     />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end p-2 pointer-events-none">
+                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-end p-2 pointer-events-none rounded-lg">
                                         {photo.caption && (
                                             <p className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity line-clamp-2">
                                                 {photo.caption}
@@ -185,7 +185,7 @@ export function PhotoGalleryView({
                         </div>
                     )}
                 </CardContent>
-                <CardFooter className="border-t bg-gray-50">
+                <CardFooter className="border-t bg-gray-50 px-2 py-3">
                     <button
                         onClick={onClose}
                         className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium"
