@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPhotosForPerson } from "@/lib/neo4j";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const personId = params.id;
+        const { id: personId } = await params;
         const photos = await getPhotosForPerson(personId);
         return NextResponse.json({ photos });
     } catch (error) {

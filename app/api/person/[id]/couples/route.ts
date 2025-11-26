@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCouplesForPerson } from "@/lib/neo4j";
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
     try {
-        const personId = params.id;
+        const { id: personId } = await params;
 
         if (!personId) {
             return NextResponse.json({ error: "Person ID is required" }, { status: 400 });
