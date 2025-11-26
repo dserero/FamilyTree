@@ -460,6 +460,207 @@ export async function linkChildToCouple(personId: string, coupleId: string): Pro
     }
 }
 
+// Create a couple node and a parent person node in one operation
+// The person will be a partner in the couple, and the existing person becomes a child
+export async function createCoupleWithParent(
+    childId: string,
+    parentData: {
+        firstName: string;
+        lastName: string;
+        dateOfBirth: string;
+        gender: "male" | "female";
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
+        profession?: string;
+    }
+): Promise<{ coupleId: string; personId: string }> {
+    const session = getSession();
+    try {
+        const result = await session.run(
+            `MATCH (child:Person {id: $childId})
+             CREATE (parent:Person {
+                id: randomUUID(),
+                firstName: $firstName,
+                lastName: $lastName,
+                name: $name,
+                dateOfBirth: $dateOfBirth,
+                gender: $gender,
+                dateOfDeath: $dateOfDeath,
+                placeOfBirth: $placeOfBirth,
+                placeOfDeath: $placeOfDeath,
+                profession: $profession
+             })
+             CREATE (couple:Couple {id: randomUUID()})
+             CREATE (parent)-[:PARTNER_IN]->(couple)
+             CREATE (couple)-[:PARENT_OF]->(child)
+             RETURN parent.id as personId, couple.id as coupleId`,
+            {
+                childId,
+                firstName: parentData.firstName,
+                lastName: parentData.lastName,
+                name: `${parentData.firstName} ${parentData.lastName}`,
+                dateOfBirth: parentData.dateOfBirth,
+                gender: parentData.gender,
+                dateOfDeath: parentData.dateOfDeath || null,
+                placeOfBirth: parentData.placeOfBirth || null,
+                placeOfDeath: parentData.placeOfDeath || null,
+                profession: parentData.profession || null,
+            }
+        );
+        const record = result.records[0];
+        return {
+            personId: record.get("personId"),
+            coupleId: record.get("coupleId"),
+        };
+    } finally {
+        await session.close();
+    }
+}
+
+// Create a couple node and a child person node in one operation
+// The existing person becomes a partner in the couple
+export async function createCoupleWithChild(
+    parentId: string,
+    childData: {
+        firstName: string;
+        lastName: string;
+        dateOfBirth: string;
+        gender: "male" | "female";
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
+        profession?: string;
+    }
+): Promise<{ coupleId: string; personId: string }> {
+    const session = getSession();
+    try {
+        const result = await session.run(
+            `MATCH (parent:Person {id: $parentId})
+             CREATE (child:Person {
+                id: randomUUID(),
+                firstName: $firstName,
+                lastName: $lastName,
+                name: $name,
+                dateOfBirth: $dateOfBirth,
+                gender: $gender,
+                dateOfDeath: $dateOfDeath,
+                placeOfBirth: $placeOfBirth,
+                placeOfDeath: $placeOfDeath,
+                profession: $profession
+             })
+             CREATE (couple:Couple {id: randomUUID()})
+             CREATE (parent)-[:PARTNER_IN]->(couple)
+             CREATE (couple)-[:PARENT_OF]->(child)
+             RETURN child.id as personId, couple.id as coupleId`,
+            {
+                parentId,
+                firstName: childData.firstName,
+                lastName: childData.lastName,
+                name: `${childData.firstName} ${childData.lastName}`,
+                dateOfBirth: childData.dateOfBirth,
+                gender: childData.gender,
+                dateOfDeath: childData.dateOfDeath || null,
+                placeOfBirth: childData.placeOfBirth || null,
+                placeOfDeath: childData.placeOfDeath || null,
+                profession: childData.profession || null,
+            }
+        );
+        const record = result.records[0];
+        return {
+            personId: record.get("personId"),
+            coupleId: record.get("coupleId"),
+        };
+    } finally {
+        await session.close();
+    }
+}
+
+// Create a couple node and a partner person node in one operation
+// The existing person becomes a partner in the couple
+export async function createCoupleWithPartner(
+    existingPartnerId: string,
+    partnerData: {
+        firstName: string;
+        lastName: string;
+        dateOfBirth: string;
+        gender: "male" | "female";
+        dateOfDeath?: string;
+        placeOfBirth?: string;
+        placeOfDeath?: string;
+        profession?: string;
+    }
+): Promise<{ coupleId: string; personId: string }> {
+    const session = getSession();
+    try {
+        const result = await session.run(
+            `MATCH (existingPartner:Person {id: $existingPartnerId})
+             CREATE (newPartner:Person {
+                id: randomUUID(),
+                firstName: $firstName,
+                lastName: $lastName,
+                name: $name,
+                dateOfBirth: $dateOfBirth,
+                gender: $gender,
+                dateOfDeath: $dateOfDeath,
+                placeOfBirth: $placeOfBirth,
+                placeOfDeath: $placeOfDeath,
+                profession: $profession
+             })
+             CREATE (couple:Couple {id: randomUUID()})
+             CREATE (existingPartner)-[:PARTNER_IN]->(couple)
+             CREATE (newPartner)-[:PARTNER_IN]->(couple)
+             RETURN newPartner.id as personId, couple.id as coupleId`,
+            {
+                existingPartnerId,
+                firstName: partnerData.firstName,
+                lastName: partnerData.lastName,
+                name: `${partnerData.firstName} ${partnerData.lastName}`,
+                dateOfBirth: partnerData.dateOfBirth,
+                gender: partnerData.gender,
+                dateOfDeath: partnerData.dateOfDeath || null,
+                placeOfBirth: partnerData.placeOfBirth || null,
+                placeOfDeath: partnerData.placeOfDeath || null,
+                profession: partnerData.profession || null,
+            }
+        );
+        const record = result.records[0];
+        return {
+            personId: record.get("personId"),
+            coupleId: record.get("coupleId"),
+        };
+    } finally {
+        await session.close();
+    }
+}
+
+// Get couples connected to a person (as partner or as child)
+export async function getCouplesForPerson(personId: string): Promise<{ asPartner: string[]; asChild: string[] }> {
+    const session = getSession();
+    try {
+        // Get couples where person is a partner
+        const partnerResult = await session.run(
+            `MATCH (p:Person {id: $personId})-[:PARTNER_IN]->(c:Couple)
+             RETURN c.id as coupleId`,
+            { personId }
+        );
+
+        // Get couples where person is a child
+        const childResult = await session.run(
+            `MATCH (p:Person {id: $personId})<-[:PARENT_OF]-(c:Couple)
+             RETURN c.id as coupleId`,
+            { personId }
+        );
+
+        const asPartner = partnerResult.records.map((record) => record.get("coupleId"));
+        const asChild = childResult.records.map((record) => record.get("coupleId"));
+
+        return { asPartner, asChild };
+    } finally {
+        await session.close();
+    }
+}
+
 // Update a Person node
 export async function updatePersonNode(
     id: string,

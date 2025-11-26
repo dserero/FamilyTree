@@ -9,12 +9,63 @@ import { PersonCard, CoupleNode as CoupleNodeComponent } from "./NodeCards";
 import { Legend } from "./Legend";
 import { EditableNodeCard } from "./EditableNodeCard";
 import { SearchBar } from "./SearchBar";
-import { AddFamilyMemberDialog } from "./ForceGraph/AddFamilyMemberDialog";
-import { CoupleSelectionDialog } from "./ForceGraph/CoupleSelectionDialog";
-import { FlipEdgeDialog } from "./ForceGraph/FlipEdgeDialog";
-import { useFamilyMemberActions } from "./ForceGraph/useFamilyMemberActions";
-import { useFlipEdge } from "./ForceGraph/useFlipEdge";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { renderToStaticMarkup } from "react-dom/server";
+
+// Toggle this to switch between hardcoded data and Neo4j data
+const USE_HARDCODED_DATA = false;
+
+// Hardcoded sample data for testing
+const SAMPLE_DATA = {
+    nodes: [
+        {
+            id: "1",
+            nodeType: "person" as const,
+            name: "John Doe",
+            firstName: "John",
+            lastName: "Doe",
+            dateOfBirth: "1950-05-15",
+            gender: "male" as const,
+        },
+        {
+            id: "2",
+            nodeType: "person" as const,
+            name: "Jane Smith",
+            firstName: "Jane",
+            lastName: "Smith",
+            dateOfBirth: "1952-08-20",
+            gender: "female" as const,
+        },
+        {
+            id: "3",
+            nodeType: "couple" as const,
+        },
+        {
+            id: "4",
+            nodeType: "person" as const,
+            name: "Alice Doe",
+            firstName: "Alice",
+            lastName: "Doe",
+            dateOfBirth: "1975-03-10",
+            gender: "female" as const,
+        },
+        {
+            id: "5",
+            nodeType: "person" as const,
+            name: "Bob Doe",
+            firstName: "Bob",
+            lastName: "Doe",
+            dateOfBirth: "1978-11-25",
+            gender: "male" as const,
+        },
+    ],
+    links: [
+        { source: "1", target: "3", type: "marriage" as const },
+        { source: "2", target: "3", type: "marriage" as const },
+        { source: "3", target: "4", type: "parent-child" as const },
+        { source: "3", target: "5", type: "parent-child" as const },
+    ],
+};
 
 const getPersonDetailRows = (person: Partial<PersonNode>) => {
     const rows: Array<{ label: string; value: string }> = [
@@ -51,20 +102,37 @@ const ForceGraph = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [initialAction, setInitialAction] = useState<"parent" | "child" | null>(null);
+    const [showRelationDialog, setShowRelationDialog] = useState(false);
+    const [pendingPersonId, setPendingPersonId] = useState<string | null>(null);
+    const [selectedEdge, setSelectedEdge] = useState<Link | null>(null);
+    const [showFlipEdgeDialog, setShowFlipEdgeDialog] = useState(false);
+    const [showCoupleSelectionDialog, setShowCoupleSelectionDialog] = useState(false);
+    const [coupleSelectionData, setCoupleSelectionData] = useState<{
+        role: "parent" | "child";
+        couples: string[];
+    } | null>(null);
 
     // Fetch data from Neo4j or use hardcoded data
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Fetch from Neo4j
-            const response = await fetch("/api/family-tree");
-            if (!response.ok) {
-                throw new Error("Failed to fetch family tree data");
+
+            if (USE_HARDCODED_DATA) {
+                // Use hardcoded data for testing
+                console.log("Using hardcoded data:", SAMPLE_DATA);
+                setData(SAMPLE_DATA);
+                setError(null);
+            } else {
+                // Fetch from Neo4j
+                const response = await fetch("/api/family-tree");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch family tree data");
+                }
+                const result = await response.json();
+                console.log("Fetched data:", result);
+                setData(result);
+                setError(null);
             }
-            const result = await response.json();
-            console.log("Fetched data:", result);
-            setData(result);
-            setError(null);
         } catch (err) {
             console.error("Error fetching data:", err);
             setError(err instanceof Error ? err.message : "Failed to load data");
@@ -76,17 +144,6 @@ const ForceGraph = () => {
     useEffect(() => {
         fetchData();
     }, []);
-
-    // Use custom hooks for dialog management
-    const familyMemberActions = useFamilyMemberActions({
-        onRefresh: fetchData,
-        onSelectNode: setSelectedNode,
-        data,
-    });
-
-    const flipEdgeActions = useFlipEdge({
-        onRefresh: fetchData,
-    });
 
     useEffect(() => {
         if (!svgRef.current || !data) return;
@@ -215,7 +272,8 @@ const ForceGraph = () => {
             .style("cursor", "pointer")
             .on("click", (event: any, d: any) => {
                 event.stopPropagation();
-                flipEdgeActions.openFlipEdgeDialog(d);
+                setSelectedEdge(d);
+                setShowFlipEdgeDialog(true);
             })
             .on("mouseenter", function (this: any) {
                 d3.select(this).attr("stroke-width", 4).attr("stroke-opacity", 1);
@@ -423,7 +481,8 @@ const ForceGraph = () => {
                 .style("cursor", "pointer")
                 .on("click", function (event: any) {
                     event.stopPropagation();
-                    familyMemberActions.openAddFamilyDialog(d.id);
+                    setPendingPersonId(d.id);
+                    setShowRelationDialog(true);
                 });
 
             addButton
@@ -845,6 +904,163 @@ const ForceGraph = () => {
         setSelectedNode(null);
     };
 
+    const handleCreateParent = async () => {
+        if (!pendingPersonId) return;
+
+        try {
+            // Get existing couples where this person is a child
+            const couplesResponse = await fetch(`/api/person/${pendingPersonId}/couples`);
+            if (!couplesResponse.ok) throw new Error("Failed to fetch couples");
+            
+            const { asChild } = await couplesResponse.json();
+            
+            if (asChild.length === 0) {
+                // No existing couple, create new couple with parent
+                await createPersonWithCouple("parent", null);
+            } else if (asChild.length === 1) {
+                // One couple exists, show choice to use it or create new
+                setCoupleSelectionData({ role: "parent", couples: asChild });
+                setShowCoupleSelectionDialog(true);
+            } else {
+                // Multiple couples, show selection
+                setCoupleSelectionData({ role: "parent", couples: asChild });
+                setShowCoupleSelectionDialog(true);
+            }
+        } catch (error) {
+            console.error("Error handling parent creation:", error);
+            alert("Error creating parent");
+        }
+    };
+
+    const handleCreateChild = async () => {
+        if (!pendingPersonId) return;
+
+        try {
+            // Get existing couples where this person is a partner
+            const couplesResponse = await fetch(`/api/person/${pendingPersonId}/couples`);
+            if (!couplesResponse.ok) throw new Error("Failed to fetch couples");
+            
+            const { asPartner } = await couplesResponse.json();
+            
+            if (asPartner.length === 0) {
+                // No existing couple, create new couple with child
+                await createPersonWithCouple("child", null);
+            } else if (asPartner.length === 1) {
+                // One couple exists, show choice to use it or create new
+                setCoupleSelectionData({ role: "child", couples: asPartner });
+                setShowCoupleSelectionDialog(true);
+            } else {
+                // Multiple couples, show selection
+                setCoupleSelectionData({ role: "child", couples: asPartner });
+                setShowCoupleSelectionDialog(true);
+            }
+        } catch (error) {
+            console.error("Error handling child creation:", error);
+            alert("Error creating child");
+        }
+    };
+
+    const handleCreatePartner = async () => {
+        if (!pendingPersonId) return;
+
+        try {
+            // Always create a new couple for partners
+            const response = await fetch("/api/couple", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    personId: pendingPersonId,
+                    role: "partner",
+                }),
+            });
+
+            if (response.ok) {
+                await fetchData();
+                setShowRelationDialog(false);
+                setPendingPersonId(null);
+            } else {
+                const errorData = await response.json();
+                console.error("Failed to create couple:", errorData.error);
+                alert(`Failed to create couple: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error("Error creating couple:", error);
+            alert("Error creating couple");
+        }
+    };
+
+    const createPersonWithCouple = async (role: "parent" | "child", coupleId: string | null) => {
+        if (!pendingPersonId) return;
+
+        try {
+            const response = await fetch("/api/couple/with-person", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    personId: pendingPersonId,
+                    role: role,
+                    coupleId: coupleId,
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                await fetchData();
+                setShowRelationDialog(false);
+                setShowCoupleSelectionDialog(false);
+                setPendingPersonId(null);
+                setCoupleSelectionData(null);
+                
+                // Open the newly created person in edit mode
+                setTimeout(() => {
+                    if (data) {
+                        const newPerson = data.nodes.find((n) => n.id === result.personId);
+                        if (newPerson) {
+                            setSelectedNode(newPerson);
+                        }
+                    }
+                }, 500);
+            } else {
+                const errorData = await response.json();
+                console.error("Failed to create person:", errorData.error);
+                alert(`Failed to create: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error("Error creating person with couple:", error);
+            alert("Error creating person");
+        }
+    };
+
+    const handleFlipEdge = async () => {
+        if (!selectedEdge || !selectedEdge.personId || !selectedEdge.coupleId) return;
+
+        try {
+            const response = await fetch("/api/flip-edge", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    personId: selectedEdge.personId,
+                    coupleId: selectedEdge.coupleId,
+                }),
+            });
+
+            if (response.ok) {
+                await fetchData(); // Refresh the graph
+                setShowFlipEdgeDialog(false);
+                setSelectedEdge(null);
+            } else {
+                const errorData = await response.json();
+                console.error("Failed to flip edge:", errorData.error);
+                alert(`Failed to flip edge: ${errorData.error}`);
+            }
+        } catch (error) {
+            console.error("Error flipping edge:", error);
+            alert("Error flipping edge");
+        }
+    };
+
     const handleSearchSelect = (nodeId: string) => {
         if (!data || !svgRef.current || !zoomRef.current) return;
 
@@ -932,33 +1148,181 @@ const ForceGraph = () => {
                     onSelectNode={setSelectedNode}
                 />
             )}
-            {familyMemberActions.showRelationDialog && (
-                <AddFamilyMemberDialog
-                    onCreateParent={familyMemberActions.handleCreateParent}
-                    onCreateChild={familyMemberActions.handleCreateChild}
-                    onCreatePartner={familyMemberActions.handleCreatePartner}
-                    onClose={familyMemberActions.closeDialogs}
-                />
+            {showRelationDialog && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    onClick={() => {
+                        setShowRelationDialog(false);
+                        setPendingPersonId(null);
+                    }}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card className="w-[480px] bg-white">
+                            <CardHeader>
+                                <CardTitle>Add Family Member</CardTitle>
+                                <CardDescription>Choose which type of family member to add</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                <p className="text-sm text-gray-700 mb-3">What would you like to create?</p>
+                                <div className="space-y-3">
+                                    <button
+                                        onClick={handleCreateParent}
+                                        className="w-full px-5 py-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-xl">⬆️�</div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-base mb-1">Create Parent</div>
+                                                <div className="text-sm opacity-90">
+                                                    Add a parent to this person
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={handleCreateChild}
+                                        className="w-full px-5 py-4 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-2xl">⬇️👶</div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-base mb-1">Create Child</div>
+                                                <div className="text-sm opacity-90">
+                                                    Add a child to this person
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={handleCreatePartner}
+                                        className="w-full px-5 py-4 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <div className="text-2xl">💑</div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-base mb-1">Create Partner</div>
+                                                <div className="text-sm opacity-90">
+                                                    Add a partner/spouse to this person
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </button>
+                                </div>
+                                        <button
+                                            onClick={() => handleCreateCouple("partner")}
+                                            className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-xl">�</div>
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-sm mb-0.5">
+                                                        I am a Partner (2 Steps)
+                                                    </div>
+                                                    <div className="text-xs opacity-90">
+                                                        Create couple node only - add partner/child later
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </button>
+                                        <button
+                                            onClick={() => handleCreateCouple("child")}
+                                            className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-left"
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-xl">👨‍👩‍👦</div>
+                                                <div className="flex-1">
+                                                    <div className="font-semibold text-sm mb-0.5">
+                                                        I am a Child (2 Steps)
+                                                    </div>
+                                                    <div className="text-xs opacity-90">
+                                                        Create couple node only - add parents later
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                            <CardFooter>
+                                <button
+                                    onClick={() => {
+                                        setShowRelationDialog(false);
+                                        setPendingPersonId(null);
+                                    }}
+                                    className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors font-medium"
+                                >
+                                    Cancel
+                                </button>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
             )}
-            {flipEdgeActions.showFlipEdgeDialog && flipEdgeActions.selectedEdge && (
-                <FlipEdgeDialog
-                    edge={flipEdgeActions.selectedEdge}
-                    onFlip={flipEdgeActions.handleFlipEdge}
-                    onClose={flipEdgeActions.closeFlipEdgeDialog}
-                />
-            )}
-            {familyMemberActions.showCoupleSelectionDialog && familyMemberActions.coupleSelectionData && (
-                <CoupleSelectionDialog
-                    role={familyMemberActions.coupleSelectionData.role}
-                    couples={familyMemberActions.coupleSelectionData.couples}
-                    onSelectCouple={(coupleId) =>
-                        familyMemberActions.createPersonWithCouple(
-                            familyMemberActions.coupleSelectionData!.role,
-                            coupleId
-                        )
-                    }
-                    onClose={familyMemberActions.closeDialogs}
-                />
+            {showFlipEdgeDialog && selectedEdge && (
+                <div
+                    className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+                    onClick={() => {
+                        setShowFlipEdgeDialog(false);
+                        setSelectedEdge(null);
+                    }}
+                >
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <Card className="w-[450px] bg-white">
+                            <CardHeader>
+                                <CardTitle>Flip Edge Relationship</CardTitle>
+                                <CardDescription>Change the relationship type</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <p className="text-sm text-gray-700">
+                                    This edge is currently a{" "}
+                                    <strong>
+                                        {selectedEdge.type === "marriage" ? '"Partner in Couple"' : '"Child in Couple"'}
+                                    </strong>{" "}
+                                    relationship.
+                                </p>
+                                <p className="text-sm text-gray-600">
+                                    Do you want to flip it to a{" "}
+                                    <strong>
+                                        {selectedEdge.type === "marriage" ? '"Child in Couple"' : '"Partner in Couple"'}
+                                    </strong>{" "}
+                                    relationship?
+                                </p>
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+                                    <p className="text-sm">
+                                        {selectedEdge.type === "marriage" ? (
+                                            <>
+                                                <span className="text-purple-700">💑 Partner in Couple</span> →{" "}
+                                                <span className="text-green-700">👨‍👩‍👦 Child in Couple</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="text-green-700">👨‍👩‍👦 Child in Couple</span> →{" "}
+                                                <span className="text-purple-700">💑 Partner in Couple</span>
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                            </CardContent>
+                            <CardFooter className="flex gap-2">
+                                <button
+                                    onClick={() => {
+                                        setShowFlipEdgeDialog(false);
+                                        setSelectedEdge(null);
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleFlipEdge}
+                                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                                >
+                                    Flip Relationship
+                                </button>
+                            </CardFooter>
+                        </Card>
+                    </div>
+                </div>
             )}
         </>
     );
