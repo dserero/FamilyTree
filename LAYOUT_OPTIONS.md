@@ -1,5 +1,6 @@
 # Graph Layout Options
 
+
 ## Current Implementation: Dagre Hierarchical Layout
 
 The family tree now uses **Dagre** (Directed Acyclic Graph) layout algorithm, which provides clean, structured positioning of nodes similar to Neo4j Bloom.
