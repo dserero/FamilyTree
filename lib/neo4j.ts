@@ -19,6 +19,10 @@ export function getDriver(): Driver {
 }
 
 export function getSession(): Session {
+    console.log("Using Neo4j database:", process.env.NEO4J_DATABASE || "neo4j");
+    console.log("Using Neo4j URI:", process.env.NEO4J_URI); 
+    console.log("Using Neo4j username:", process.env.NEO4J_USERNAME);
+    console.log("Using Neo4j password:", process.env.NEO4J_PASSWORD);
     return getDriver().session({ database: process.env.NEO4J_DATABASE || "neo4j" });
 }
 
