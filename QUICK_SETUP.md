@@ -7,6 +7,7 @@ Go to: https://github.com/dserero/FamilyTree/settings/secrets/actions
 Click "New repository secret" or update existing ones:
 
 ### Neo4j Secrets
+
 ```
 Name: NEO4J_URI
 Value: neo4j://neo4j:7687
@@ -19,8 +20,7 @@ Value: neo4j
 
 ```
 Name: NEO4J_PASSWORD
-Value: FamilyTree2026!Secure
-(or choose your own strong password)
+Value: <your NEO4J_PASSWORD from .env.local>
 ```
 
 ```
@@ -29,6 +29,7 @@ Value: neo4j
 ```
 
 ### VPS Connection Secrets (if not already set)
+
 ```
 Name: VPS_HOST
 Value: 46.224.96.131
@@ -45,6 +46,7 @@ Value: [Your SSH private key]
 ```
 
 ### Backblaze B2 Secrets (should already be set)
+
 - B2_KEY_ID
 - B2_APPLICATION_KEY
 - B2_REGION
@@ -54,6 +56,7 @@ Value: [Your SSH private key]
 ## Step 2: Deploy to VPS
 
 ### Option A: Automatic Deployment (Recommended)
+
 Just push your code to the main branch:
 
 ```bash
@@ -63,12 +66,14 @@ git push origin main
 ```
 
 The GitHub Actions workflow will automatically:
+
 1. SSH into your VPS
 2. Pull the latest code
 3. Create .env.local with all secrets
 4. Start Neo4j and the app with docker-compose
 
 ### Option B: Manual Deployment
+
 SSH into your VPS and run:
 
 ```bash
@@ -102,17 +107,20 @@ docker-compose logs app
 ## Step 4: Access Neo4j Browser
 
 Open in your browser:
+
 ```
 http://46.224.96.131:7474
 ```
 
 Login with:
+
 - Username: `neo4j`
 - Password: (the password you set in GitHub secrets)
 
 ## Step 5: Test Your Application
 
 Open in your browser:
+
 ```
 http://46.224.96.131:3000
 ```
@@ -124,6 +132,7 @@ The app should now connect to Neo4j successfully!
 ### App can't connect to Neo4j?
 
 Check the environment variables on VPS:
+
 ```bash
 ssh root@46.224.96.131
 cd /opt/familytree
@@ -131,6 +140,7 @@ cat .env.local
 ```
 
 Should show:
+
 ```
 NEO4J_URI=neo4j://neo4j:7687
 NEO4J_USERNAME=neo4j
@@ -178,11 +188,12 @@ Edit docker-compose.yml on VPS to only expose Neo4j locally:
 
 ```yaml
 ports:
-  - "127.0.0.1:7474:7474"  # Only localhost can access browser
-  - "127.0.0.1:7687:7687"  # Only localhost can access Bolt
+    - "127.0.0.1:7474:7474" # Only localhost can access browser
+    - "127.0.0.1:7687:7687" # Only localhost can access Bolt
 ```
 
 Or set up firewall rules:
+
 ```bash
 # Allow only localhost to access Neo4j ports
 sudo ufw deny 7474

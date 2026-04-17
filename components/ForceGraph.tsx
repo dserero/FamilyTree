@@ -12,6 +12,7 @@ import { SearchBar } from "./SearchBar";
 import { AddFamilyMemberDialog } from "./ForceGraph/AddFamilyMemberDialog";
 import { CoupleSelectionDialog } from "./ForceGraph/CoupleSelectionDialog";
 import { FlipEdgeDialog } from "./ForceGraph/FlipEdgeDialog";
+import { CreatePersonDialog } from "./ForceGraph/CreatePersonDialog";
 import { useFamilyMemberActions } from "./ForceGraph/useFamilyMemberActions";
 import { useFlipEdge } from "./ForceGraph/useFlipEdge";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -51,6 +52,7 @@ const ForceGraph = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedNode, setSelectedNode] = useState<Node | null>(null);
     const [initialAction, setInitialAction] = useState<"parent" | "child" | null>(null);
+    const [showCreatePersonDialog, setShowCreatePersonDialog] = useState(false);
 
     // Fetch data from Neo4j or use hardcoded data
     const fetchData = async () => {
@@ -194,7 +196,7 @@ const ForceGraph = () => {
                     .forceLink(graphData.links)
                     .id((d: any) => d.id)
                     .distance(60) // Reduced link distance
-                    .strength(0)
+                    .strength(0),
             )
             .force("collision", d3.forceCollide().radius(70)) // Reduced collision radius
             .alpha(0.1)
@@ -255,7 +257,7 @@ const ForceGraph = () => {
                         if (!event.active) simulation.alphaTarget(0);
                         d.fx = null;
                         d.fy = null;
-                    })
+                    }),
             );
 
         // Person nodes
@@ -708,6 +710,21 @@ const ForceGraph = () => {
         setInitialAction(null);
     };
 
+    const handlePersonCreated = async (personId: string) => {
+        setShowCreatePersonDialog(false);
+        await fetchData();
+        // Open the new person's card after data refreshes
+        setTimeout(() => {
+            setData((prev) => {
+                if (prev) {
+                    const newNode = prev.nodes.find((n) => n.id === personId);
+                    if (newNode) setSelectedNode(newNode);
+                }
+                return prev;
+            });
+        }, 500);
+    };
+
     const handleUpdateNode = (updatedNode: PersonNode) => {
         if (!data || !svgRef.current) return;
 
@@ -748,7 +765,7 @@ const ForceGraph = () => {
                 "fill",
                 updatedNode.gender === "male"
                     ? "url(#gradient-" + updatedNode.id + ")"
-                    : "url(#gradient-" + updatedNode.id + ")"
+                    : "url(#gradient-" + updatedNode.id + ")",
             )
             .attr("stroke", updatedNode.gender === "male" ? "#64B5F6" : "#F06292");
 
@@ -921,6 +938,13 @@ const ForceGraph = () => {
         <>
             <svg ref={svgRef} style={{ display: "block" }} />
             <Legend />
+            <button
+                onClick={() => setShowCreatePersonDialog(true)}
+                title="Create new person"
+                className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-3xl font-bold shadow-lg flex items-center justify-center transition-colors"
+            >
+                +
+            </button>
             {data && <SearchBar nodes={data.nodes} onSelectNode={handleSearchSelect} />}
             {selectedNode && (
                 <EditableNodeCard
@@ -947,6 +971,9 @@ const ForceGraph = () => {
                     onClose={flipEdgeActions.closeFlipEdgeDialog}
                 />
             )}
+            {showCreatePersonDialog && (
+                <CreatePersonDialog onClose={() => setShowCreatePersonDialog(false)} onCreated={handlePersonCreated} />
+            )}
             {familyMemberActions.showCoupleSelectionDialog && familyMemberActions.coupleSelectionData && (
                 <CoupleSelectionDialog
                     role={familyMemberActions.coupleSelectionData.role}
@@ -954,7 +981,7 @@ const ForceGraph = () => {
                     onSelectCouple={(coupleId) =>
                         familyMemberActions.createPersonWithCouple(
                             familyMemberActions.coupleSelectionData!.role,
-                            coupleId
+                            coupleId,
                         )
                     }
                     onClose={familyMemberActions.closeDialogs}
