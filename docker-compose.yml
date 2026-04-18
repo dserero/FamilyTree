@@ -38,6 +38,8 @@ services:
             - NODE_ENV=production
         env_file:
             - .env.local
+        extra_hosts:
+            - "host.docker.internal:host-gateway"
         networks:
             - familytree-network
 
