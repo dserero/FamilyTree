@@ -1,223 +1,95 @@
-# VPS Deployment Setup Guide
+# Family Tree Deployment & Configuration Guide
 
-This guide explains how to set up automatic deployment to your VPS using GitHub Actions.
+This document outlines the architecture and configuration for both Local Development and VPS Production environments.
 
-## Prerequisites
+## Architecture Overview
 
--   A VPS with Docker and Docker Compose installed
--   SSH access to your VPS
--   GitHub repository with admin access
+- **Database:** Neo4j running on a VPS (`46.224.96.131`).
+- **App:** Next.js application running in Docker.
+- **Media Storage:** Backblaze B2.
 
-## VPS Setup
+Both Local and Production environments point to the same Neo4j instance on the VPS.
 
-1. **Install Docker and Docker Compose on your VPS:**
+---
 
-    ```bash
-    # Update packages
-    sudo apt update && sudo apt upgrade -y
+## Environment Configuration
 
-    # Install Docker
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sudo sh get-docker.sh
+### 1. Local Development
 
-    # Install Docker Compose
-    sudo apt install docker-compose -y
+For running the app on your local machine while connecting to the VPS database.
 
-    # Add your user to docker group
-    sudo usermod -aG docker $USER
-    newgrp docker
-    ```
+**File:** `.env.local`
 
-2. **Create application directory:**
-    ```bash
-    sudo mkdir -p /opt/familytree
-    sudo chown $USER:$USER /opt/familytree
-    ```
+```env
+# Neo4j - Connection to VPS
+NEO4J_URI=neo4j://46.224.96.131:7687
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=your_password
+NEO4J_DATABASE=neo4j
 
-## GitHub Secrets Configuration
+# Backblaze B2
+B2_KEY_ID=...
+B2_APPLICATION_KEY=...
+...
+```
 
-Go to your GitHub repository → Settings → Secrets and variables → Actions → New repository secret
-
-Add the following secrets:
-
-### Required Secrets:
-
-1. **VPS_HOST**: Your VPS IP address or domain
-
-    - Example: `203.0.113.1` or `yourserver.com`
-
-2. **VPS_USERNAME**: SSH username for your VPS
-
-    - Example: `root` or `ubuntu`
-
-3. **VPS_SSH_KEY**: Private SSH key for authentication
-
-    - Generate on your local machine:
-        ```bash
-        ssh-keygen -t ed25519 -C "github-actions" -f ~/.ssh/vps_deploy
-        ```
-    - Copy public key to VPS:
-        ```bash
-        ssh-copy-id -i ~/.ssh/vps_deploy.pub user@your-vps-ip
-        ```
-    - Copy private key content:
-        ```bash
-        cat ~/.ssh/vps_deploy
-        ```
-    - Paste the entire private key content into the secret
-
-4. **VPS_PORT** (optional): SSH port (default: 22)
-    - Example: `22` or `2222`
-
-### Neo4j Database Secrets:
-
-5. **NEO4J_URI**: `neo4j+s://a580520a.databases.neo4j.io`
-6. **NEO4J_USERNAME**: `neo4j`
-7. **NEO4J_PASSWORD**: `lVzAUmWusgu5KRLD1gwMB1zMrEzmiIdJacvhHURpVZA`
-8. **NEO4J_DATABASE**: `neo4j`
-9. **AURA_INSTANCEID**: `a580520a`
-10. **AURA_INSTANCENAME**: `Instance02`
-
-## How It Works
-
-When you push to the `main` branch:
-
-1. GitHub Actions connects to your VPS via SSH
-2. Clones/pulls the latest code
-3. Creates `.env.local` with your secrets
-4. Stops old containers
-5. Builds and starts new containers
-6. Cleans up old Docker images
-
-## Local Testing
-
-Test your Docker setup locally before deploying:
+**Run Command:**
 
 ```bash
-# Build and start
 docker-compose up --build
-
-# View logs
-docker-compose logs -f
-
-# Stop containers
-docker-compose down
 ```
 
-Access the application at: http://localhost:3000
+_Note: `docker-compose.override.yml` ensures the development server uses `Dockerfile.dev` and maps your local files for hot-reloading._
 
-## VPS Access
+---
 
-After deployment, access your application at:
+## 2. VPS Production
 
+The VPS deployment is triggered by pushes to the `main` branch via GitHub Actions.
+
+### GitHub Secrets Requirements
+
+Go to **Settings > Secrets and variables > Actions** and ensure these are set:
+
+| Secret           | Value                               | Description                                |
+| ---------------- | ----------------------------------- | ------------------------------------------ |
+| `NEO4J_URI`      | `neo4j://host.docker.internal:7687` | Important: Use this internal host for VPS. |
+| `NEO4J_USERNAME` | `neo4j`                             |                                            |
+| `NEO4J_PASSWORD` | `...`                               |                                            |
+| `NEO4J_DATABASE` | `neo4j`                             |                                            |
+| `VPS_HOST`       | `46.224.96.131`                     |                                            |
+| `VPS_USERNAME`   | `root`                              |                                            |
+| `VPS_SSH_KEY`    | `...`                               | Your private SSH key.                      |
+
+### Technical Details (VPS Networking)
+
+On Linux/VPS, Docker containers don't naturally know what `host.docker.internal` is. We have configured `docker-compose.yml` with:
+
+```yaml
+extra_hosts:
+    - "host.docker.internal:host-gateway"
 ```
-http://your-vps-ip:3000
-```
 
-## Nginx Reverse Proxy (Optional)
+This allows the App container on the VPS to reach the Neo4j instance running on the same host's port `7687`.
 
-For production with a domain name, set up Nginx:
+---
+
+## Common Issues & Troubleshooting
+
+### Data Sync (Neo4j Desktop)
+
+If you add data via `localhost:3000` but don't see it in Neo4j Desktop:
+
+1. **Refresh the Graph:** Run `MATCH (n) RETURN n LIMIT 10` to force a data fetch.
+2. **Clear Cache:** Run `CALL db.clearQueryCaches()` in the Neo4j Browser.
+3. **Verify URI:** Ensure Neo4j Desktop is connected to `bolt://46.224.96.131:7687`.
+
+### Deployment Logs
+
+To see logs on the VPS:
 
 ```bash
-sudo apt install nginx -y
-```
-
-Create Nginx configuration:
-
-```bash
-sudo nano /etc/nginx/sites-available/familytree
-```
-
-Add:
-
-```nginx
-server {
-    listen 80;
-    server_name yourdomain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-Enable the site:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/familytree /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl restart nginx
-```
-
-## SSL Certificate (Optional)
-
-Install Let's Encrypt certificate:
-
-```bash
-sudo apt install certbot python3-certbot-nginx -y
-sudo certbot --nginx -d yourdomain.com
-```
-
-## Troubleshooting
-
-### Check deployment logs:
-
-```bash
-ssh user@your-vps-ip
+ssh root@46.224.96.131
 cd /opt/familytree
-docker-compose logs -f
-```
-
-### Check container status:
-
-```bash
-docker-compose ps
-```
-
-### Restart containers:
-
-```bash
-docker-compose restart
-```
-
-### Rebuild from scratch:
-
-```bash
-docker-compose down -v
-docker-compose up --build -d
-```
-
-## Monitoring
-
-View application logs:
-
-```bash
 docker-compose logs -f app
 ```
-
-Check Docker resource usage:
-
-```bash
-docker stats
-```
-
-## Security Notes
-
--   Never commit `.env.local` to Git (it's in `.gitignore`)
--   Keep your SSH keys secure
--   Use strong passwords for Neo4j
--   Consider setting up a firewall (UFW)
--   Regularly update your VPS packages
-
-## Support
-
-For issues, check:
-
-1. GitHub Actions workflow logs
-2. VPS Docker logs: `docker-compose logs`
-3. Neo4j connectivity from VPS
